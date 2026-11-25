@@ -1,0 +1,23 @@
+# Build artifacts
+build/
+out/
+cmake-build-*/
+*.obj
+*.res
+*.ico
+*.ilk
+*.pdb
+*.exp
+*.lib
+*.exe
+generated_from_holyc.cpp
+
+# IDE / OS junk
+.vs/
+.vscode/
+*.user
+*.suo
+*.sln
+*.vcxproj*
+Thumbs.db
+.DS_Store
