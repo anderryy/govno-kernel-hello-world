@@ -1,7 +1,7 @@
 // ============================================================================
-//  holyc2cpp_bootstrap.cpp — Build-Time HolyC-to-C++ Ahead-of-Time Transpiler
-//  Compiled FIRST by build.bat, then compiles holyc/hello_temple.HC into C++
-//  AND generates the cursed 32x32 ICO resource!
+//  holyc2cpp_bootstrap.cpp — Multi-Module Build-Time HolyC-to-C++20 Transpiler
+//  Compiled FIRST during build, transpiles all holyc/*.HC files into C++20
+//  and emits the 32x32 ICO resource.
 // ============================================================================
 
 #include <cstdint>
@@ -70,11 +70,26 @@ std::string expand_exe_blocks(const std::string& raw) {
     return res;
 }
 
-std::string strip_doldoc(const std::string& s) {
+std::string strip_doldoc_outside_strings(const std::string& s) {
     std::string out;
     bool in_str = false;
+    bool in_line_cmt = false;
     for (size_t i = 0; i < s.size(); ++i) {
-        if (s[i] == '"' && (i == 0 || s[i - 1] != '\\')) in_str = !in_str;
+        if (in_line_cmt) {
+            if (s[i] == '\n') in_line_cmt = false;
+            out.push_back(s[i]);
+            continue;
+        }
+        if (!in_str && s[i] == '/' && i + 1 < s.size() && s[i + 1] == '/') {
+            in_line_cmt = true;
+            out.push_back(s[i]);
+            continue;
+        }
+        if (s[i] == '"' && (i == 0 || s[i - 1] != '\\')) {
+            in_str = !in_str;
+            out.push_back(s[i]);
+            continue;
+        }
         if (!in_str && s[i] == '$') {
             size_t end = s.find('$', i + 1);
             if (end != std::string::npos) { i = end; continue; }
@@ -84,19 +99,19 @@ std::string strip_doldoc(const std::string& s) {
     return out;
 }
 
-std::string transpile_holyc_to_cpp(const std::string& hc_expanded) {
-    std::string s = strip_doldoc(hc_expanded);
+std::string transpile_holyc_to_cpp(const std::string& hc_expanded, size_t total_hc_bytes) {
+    std::string s = strip_doldoc_outside_strings(hc_expanded);
 
-    // Collect known 0-arg functions so "FnName;" becomes "FnName();"
+    // Collect 0-arg functions so "FnName;" becomes "FnName();"
     std::unordered_set<std::string> zero_arg_funcs;
     {
-        std::regex fn_re(R"(\b(?:U0|I64|U8|F64)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*\))");
-        auto it = std::sregex_iterator(s.begin(), s.end(), fn_re);
+        std::regex fn0_re(R"(\b(?:U0|I64|U8|F64)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*\))");
+        auto it = std::sregex_iterator(s.begin(), s.end(), fn0_re);
         auto end = std::sregex_iterator();
         for (; it != end; ++it) zero_arg_funcs.insert((*it)[1].str());
     }
 
-    // Replace inline asm { MOV RAX, var \n INT 0x80 }
+    // Replace inline asm { MOV RAX, var; INT 0x80; }
     {
         std::regex asm_re(R"(asm\s*\{\s*MOV\s+RAX\s*,\s*([A-Za-z_][A-Za-z0-9_]*)\s*;?\s*INT\s+0x80\s*;?\s*\})");
         s = std::regex_replace(s, asm_re, "aot_emit_byte($1);");
@@ -108,9 +123,9 @@ std::string transpile_holyc_to_cpp(const std::string& hc_expanded) {
         s = std::regex_replace(s, pow_re, "holyc_ipow($1, $2)");
     }
 
-    // Replace HolyC chained comparisons "32 <= ch <= 126" -> "((32 <= ch) && (ch <= 126))"
+    // Replace HolyC chained comparisons including array/member expressions
     {
-        std::regex chain_re(R"((\b[A-Za-z0-9_]+\b)\s*(<=|<|>=|>)\s*(\b[A-Za-z0-9_]+\b)\s*(<=|<|>=|>)\s*(\b[A-Za-z0-9_]+\b))");
+        std::regex chain_re(R"(([A-Za-z0-9_]+(?:\[[^\]]+\]|\.[A-Za-z0-9_]+)*)\s*(<=|<|>=|>)\s*([A-Za-z0-9_]+(?:\[[^\]]+\]|\.[A-Za-z0-9_]+)*)\s*(<=|<|>=|>)\s*([A-Za-z0-9_]+(?:\[[^\]]+\]|\.[A-Za-z0-9_]+)*))");
         s = std::regex_replace(s, chain_re, "(($1 $2 $3) && ($3 $4 $5))");
     }
 
@@ -121,7 +136,42 @@ std::string transpile_holyc_to_cpp(const std::string& hc_expanded) {
     s = std::regex_replace(s, std::regex(R"(\bU8\b)"), "uint8_t");
     s = std::regex_replace(s, std::regex(R"(\bF64\b)"), "double");
 
-    // Process line by line for bare string print statements and 0-arg parenthesis-free calls
+    // Auto-extract struct forward declarations & function forward declarations
+    std::vector<std::string> struct_decls;
+    std::unordered_set<std::string> seen_structs;
+    {
+        std::regex st_re(R"(\bstruct\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{)");
+        auto it = std::sregex_iterator(s.begin(), s.end(), st_re);
+        auto end = std::sregex_iterator();
+        for (; it != end; ++it) {
+            std::string nm = (*it)[1].str();
+            if (!seen_structs.count(nm)) {
+                seen_structs.insert(nm);
+                struct_decls.push_back("struct " + nm + ";");
+            }
+        }
+    }
+
+    std::vector<std::string> fwd_decls;
+    std::unordered_set<std::string> seen_decls;
+    {
+        std::regex decl_re(R"(\b([A-Za-z_][A-Za-z0-9_]*)[ \t]+([A-Za-z_][A-Za-z0-9_]*)[ \t]*\([^;{}\r\n]*\)[ \t]*(?=\{))");
+        auto it = std::sregex_iterator(s.begin(), s.end(), decl_re);
+        auto end = std::sregex_iterator();
+        for (; it != end; ++it) {
+            std::string ret_t = (*it)[1].str();
+            bool valid_ret = (ret_t == "void" || ret_t == "int64_t" || ret_t == "uint8_t" ||
+                              ret_t == "double" || seen_structs.count(ret_t));
+            if (!valid_ret) continue;
+            std::string sig = it->str();
+            if (!seen_decls.count(sig)) {
+                seen_decls.insert(sig);
+                fwd_decls.push_back(sig + ";");
+            }
+        }
+    }
+
+    // Line-by-line transform for bare string statements and 0-arg parenthesis-free calls
     std::istringstream iss(s);
     std::ostringstream body_out;
     std::string line;
@@ -131,13 +181,11 @@ std::string transpile_holyc_to_cpp(const std::string& hc_expanded) {
         size_t first = trimmed.find_first_not_of(" \t");
         if (first != std::string::npos) trimmed = trimmed.substr(first);
 
-        // Bare string statement: "...";
         if (!trimmed.empty() && trimmed.front() == '"' && trimmed.back() == ';') {
             std::string str_lit = trimmed.substr(0, trimmed.size() - 1);
             body_out << "  aot_print(" << str_lit << ");\n";
             continue;
         }
-        // Parenthesis-free 0-arg call: FnName;
         if (!trimmed.empty() && trimmed.back() == ';') {
             std::string cand = trimmed.substr(0, trimmed.size() - 1);
             if (zero_arg_funcs.count(cand)) {
@@ -149,9 +197,10 @@ std::string transpile_holyc_to_cpp(const std::string& hc_expanded) {
     }
 
     std::string transpiled_code = body_out.str();
+    std::string preview_snippet = transpiled_code.substr(0, std::min<size_t>(transpiled_code.size(), 8000));
 
     std::ostringstream cpp;
-    cpp << "// AUTO-GENERATED BY holyc2cpp.exe FROM holyc/hello_temple.HC AT BUILD TIME!\n"
+    cpp << "// AUTO-GENERATED BY holyc2cpp.exe FROM " << total_hc_bytes << " BYTES OF HOLYC SOURCE!\n"
         << "#include \"holyc_aot_bridge.hpp\"\n"
         << "#include <cstdint>\n"
         << "#include <string>\n\n"
@@ -174,15 +223,21 @@ std::string transpile_holyc_to_cpp(const std::string& hc_expanded) {
         << "        g_aot_log.push_back(s[i]);\n"
         << "    }\n"
         << "}\n\n"
+        << "void aot_print_int(int64_t v) {\n"
+        << "    g_aot_log += std::to_string(v);\n"
+        << "}\n\n"
         << "void aot_emit_byte(int64_t b) {\n"
         << "    g_aot_emitted.push_back(static_cast<char>(b & 0xFF));\n"
         << "}\n\n"
-        << "// Forward declarations for HolyC AOT functions\n"
-        << "void BlessRingZero();\n"
-        << "void EmitAotHello();\n"
-        << "int64_t ValidatePrintableAscii(int64_t ch);\n"
-        << "void TempleEmitChar(uint8_t ch);\n\n"
-        << transpiled_code << "\n"
+        << "// Auto-extracted forward declarations from HolyC modules\n";
+
+    for (const auto& sd : struct_decls) {
+        cpp << sd << "\n";
+    }
+    for (const auto& fd : fwd_decls) {
+        cpp << fd << "\n";
+    }
+    cpp << "\n" << transpiled_code << "\n"
         << "} // namespace\n\n"
         << "HolyCAotResult run_compiled_holyc_aot() {\n"
         << "    g_aot_emitted.clear();\n"
@@ -196,7 +251,7 @@ std::string transpile_holyc_to_cpp(const std::string& hc_expanded) {
         << "    return res;\n"
         << "}\n\n"
         << "const char* get_holyc_transpiled_cpp_preview() {\n"
-        << "    return R\"HC_CPP(\n" << transpiled_code << "\n)HC_CPP\";\n"
+        << "    return R\"HC_CPP(\n" << preview_snippet << "\n)HC_CPP\";\n"
         << "}\n\n"
         << "} // namespace govno::holyc_aot\n";
 
@@ -204,7 +259,6 @@ std::string transpile_holyc_to_cpp(const std::string& hc_expanded) {
 }
 
 void write_cursed_ico(const std::string& path) {
-    // 32x32 32-bit BGRA ICO (radioactive lime + poop-gold smiley + red eyes)
     std::vector<uint8_t> ico;
     auto push_u16 = [&](uint16_t v) { ico.push_back(v & 0xFF); ico.push_back((v >> 8) & 0xFF); };
     auto push_u32 = [&](uint32_t v) {
@@ -216,47 +270,37 @@ void write_cursed_ico(const std::string& path) {
     const uint32_t and_bytes = 32 * 4;
     const uint32_t img_size = 40 + xor_bytes + and_bytes;
 
-    // ICONDIR
     push_u16(0); push_u16(1); push_u16(1);
-    // ICONDIRENTRY
     ico.push_back(32); ico.push_back(32); ico.push_back(0); ico.push_back(0);
     push_u16(1); push_u16(32);
     push_u32(img_size);
     push_u32(22);
 
-    // BITMAPINFOHEADER
-    push_u32(40);
-    push_u32(32);
-    push_u32(64); // 2 * height
-    push_u16(1);
-    push_u16(32);
-    push_u32(0);
+    push_u32(40); push_u32(32); push_u32(64);
+    push_u16(1); push_u16(32); push_u32(0);
     push_u32(xor_bytes);
     push_u32(0); push_u32(0); push_u32(0); push_u32(0);
 
-    // Pixels (bottom-up BGRA)
     for (int y = 31; y >= 0; --y) {
         for (int x = 0; x < 32; ++x) {
-            int dx = x - 16;
-            int dy = y - 16;
+            int dx = x - 16, dy = y - 16;
             int r2 = dx * dx + dy * dy;
-            uint8_t B = 0, G = 255, R = 0, A = 255; // neon green bg
-            if ((x < 2 || x >= 30 || y < 2 || y >= 30)) {
-                R = 255; G = 0; B = 255; // magenta border
+            uint8_t B = 0, G = 255, R = 0, A = 255;
+            if (x < 2 || x >= 30 || y < 2 || y >= 30) {
+                R = 255; G = 0; B = 255;
             } else if (r2 <= 169) {
-                R = 255; G = 220; B = 0; // yellow face
+                R = 255; G = 220; B = 0;
                 if ((x >= 9 && x <= 12 && y >= 10 && y <= 14) ||
                     (x >= 20 && x <= 23 && y >= 10 && y <= 14)) {
-                    R = 255; G = 0; B = 0; // cursed red eyes
+                    R = 255; G = 0; B = 0;
                 }
                 if (y >= 20 && y <= 23 && x >= 10 && x <= 22) {
-                    R = 20; G = 20; B = 20; // derpy grin
+                    R = 20; G = 20; B = 20;
                 }
             }
             ico.push_back(B); ico.push_back(G); ico.push_back(R); ico.push_back(A);
         }
     }
-    // AND mask
     for (uint32_t i = 0; i < and_bytes; ++i) ico.push_back(0);
 
     std::ofstream f(path, std::ios::binary);
@@ -267,29 +311,37 @@ void write_cursed_ico(const std::string& path) {
 
 int main(int argc, char** argv) {
     if (argc < 4) {
-        std::cerr << "Usage: holyc2cpp <input.HC> <output.cpp> <output.ico>\n";
+        std::cerr << "Usage: holyc2cpp <output.cpp> <output.ico> <in1.HC> [in2.HC ...]\n";
         return 1;
     }
-    std::ifstream in(argv[1], std::ios::binary);
-    if (!in) {
-        std::cerr << "Failed to open input HolyC file: " << argv[1] << "\n";
-        return 2;
+
+    std::ostringstream combined_hc;
+    size_t total_bytes = 0;
+    for (int i = 3; i < argc; ++i) {
+        std::ifstream in(argv[i], std::ios::binary);
+        if (!in) {
+            std::cerr << "Failed to open input HolyC file: " << argv[i] << "\n";
+            return 2;
+        }
+        std::ostringstream ss;
+        ss << in.rdbuf();
+        std::string txt = ss.str();
+        total_bytes += txt.size();
+        combined_hc << "// --- MODULE: " << argv[i] << " ---\n" << txt << "\n";
     }
-    std::ostringstream ss;
-    ss << in.rdbuf();
 
-    std::string expanded = expand_exe_blocks(ss.str());
-    std::string cpp_code = transpile_holyc_to_cpp(expanded);
+    std::string expanded = expand_exe_blocks(combined_hc.str());
+    std::string cpp_code = transpile_holyc_to_cpp(expanded, total_bytes);
 
-    std::ofstream out(argv[2], std::ios::binary);
+    std::ofstream out(argv[1], std::ios::binary);
     if (!out) {
-        std::cerr << "Failed to write generated C++ file: " << argv[2] << "\n";
+        std::cerr << "Failed to write generated C++ file: " << argv[1] << "\n";
         return 3;
     }
     out << cpp_code;
-    write_cursed_ico(argv[3]);
+    write_cursed_ico(argv[2]);
 
-    std::cout << "[HOLYC2CPP-AOT] Compiled " << argv[1] << " -> " << argv[2]
-              << " + generated cursed icon " << argv[3] << "\n";
+    std::cout << "[HOLYC2CPP-AOT] Transpiled " << (argc - 3) << " HolyC modules ("
+              << total_bytes << " bytes) -> " << argv[1] << "\n";
     return 0;
 }

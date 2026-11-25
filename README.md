@@ -6,8 +6,8 @@
 
 Каждый запуск проходит полный сквозной путь от AOT-транспиляции HolyC до исполнения машинного байткода на виртуальном CPU:
 
-1. **Build-Time HolyC AOT Bootstrapping (`src/tools/holyc2cpp_bootstrap.cpp`)**
-   - Во время сборки `holyc2cpp.exe` читает `holyc/hello_temple.HC`, исполняет compile-time блок `#exe { StreamPrint(...); }`, транспилирует конструкции HolyC (`Class`, `U0`, `I64`, `U8`, `2`3`, цепные сравнения `32 <= ch <= 126`, вызовы без скобок, `asm { MOV RAX, ch; INT 0x80; }`) в C++20 и генерирует ресурсы иконки для `rc.exe`.
+1. **Build-Time HolyC AOT Bootstrapping (`holyc/*.HC` + `src/tools/holyc2cpp_bootstrap.cpp`)**
+   - Во время сборки `holyc2cpp.exe` транспилирует **9 модулей HolyC** (`01_temple_boot.HC` — GDT/IDT/PML4/ACPI; `02_holy_math_crypto.HC` — RSA, решето простых, Collatz, CRC32, FNV1a; `03_doldoc_vga_gfx.HC` — 16-цветная VGA-палитра, Брезенхэм, Мандельброт, 3D-LUT; `04_brainfuck_in_holyc.HC` — три VM внутри HolyC: Brainfuck, SUBLEQ и RPN; `05_god_oracle_dict.HC` — 64-словный оракул TempleOS и DolDoc; `06_holy_raytracer_physics.HC` — fixed-point трассировщик лучей и физика; `07_holy_compiler_sql_sort.HC` — сортировки, SQL-сканер, RLE; `08_holy_chess_minimax_ai.HC` — поиск пути 8x8, Minimax и перцептрон; `hello_temple.HC` — главная точка входа) в C++20 и генерирует иконку `cursed.ico` для `rc.exe`.
 2. **Compile-Time C++20 Metaprogramming (`include/cursed_macros.hpp`)**
    - `consteval`-интерпретатор Brainfuck (`compile_time_bf_eval_h`), рекурсивные шаблоны Фибоначчи и проверки простых чисел, Коллатц-XOR расшифровка и 10-слойная обёртка `EnterpriseMonadOnion<T, 8>`.
 3. **BIOS Probe & Kernel Build (`src/kernel/bios_acpi.cpp`)**

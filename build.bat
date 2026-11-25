@@ -43,8 +43,17 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [STAGE 2/4] Compiling holyc\hello_temple.HC into C++20 and generating cursed.ico...
-build\holyc2cpp.exe holyc\hello_temple.HC build\generated_from_holyc.cpp build\cursed.ico
+echo [STAGE 2/4] Compiling 9 HolyC modules (holyc\*.HC) into C++20 and generating cursed.ico...
+build\holyc2cpp.exe build\generated_from_holyc.cpp build\cursed.ico ^
+    holyc\01_temple_boot.HC ^
+    holyc\02_holy_math_crypto.HC ^
+    holyc\03_doldoc_vga_gfx.HC ^
+    holyc\04_brainfuck_in_holyc.HC ^
+    holyc\05_god_oracle_dict.HC ^
+    holyc\06_holy_raytracer_physics.HC ^
+    holyc\07_holy_compiler_sql_sort.HC ^
+    holyc\08_holy_chess_minimax_ai.HC ^
+    holyc\hello_temple.HC
 if errorlevel 1 (
     echo [FATAL] HolyC AOT compilation failed!
     exit /b 1

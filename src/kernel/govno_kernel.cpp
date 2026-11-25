@@ -225,9 +225,17 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
     append_kernel_log("  CPU: " + hw.cpu_brand + " | RAM: " + std::to_string(hw.total_ram_mb) + " МБ");
     append_kernel_log("==========================================================================");
 
-    // 0. Execute native code AHEAD-OF-TIME compiled from holyc/hello_temple.HC during build.bat!
+    // 0. Execute native code AHEAD-OF-TIME compiled from all 9 holyc/*.HC modules during build.bat!
     auto holyc_aot = govno::holyc_aot::run_compiled_holyc_aot();
-    append_kernel_log("[HOLYC-AOT] Вызван нативный код, скомпилированный из holyc/hello_temple.HC при сборке .exe!");
+    append_kernel_log("[HOLYC-AOT] Вызван нативный код из 9 скомпилированных модулей holyc/*.HC!");
+    {
+        std::istringstream aot_iss(holyc_aot.aot_log);
+        std::string aln;
+        while (std::getline(aot_iss, aln)) {
+            if (!aln.empty() && aln.back() == '\r') aln.pop_back();
+            if (!aln.empty()) append_kernel_log("  " + aln);
+        }
+    }
     append_kernel_log("[HOLYC-AOT] Выход AOT (HOLY_SHIFT=" + std::to_string(holyc_aot.magic_power) +
                       "): \"" + holyc_aot.emitted_text + "\"");
     sleep_step(180);

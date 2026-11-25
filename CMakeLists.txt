@@ -7,16 +7,26 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Stage 1: Build-time HolyC-to-C++ AOT compiler
 add_executable(holyc2cpp src/tools/holyc2cpp_bootstrap.cpp)
 
-set(HOLYC_INPUT "${CMAKE_CURRENT_SOURCE_DIR}/holyc/hello_temple.HC")
+set(HOLYC_INPUTS
+    "${CMAKE_CURRENT_SOURCE_DIR}/holyc/01_temple_boot.HC"
+    "${CMAKE_CURRENT_SOURCE_DIR}/holyc/02_holy_math_crypto.HC"
+    "${CMAKE_CURRENT_SOURCE_DIR}/holyc/03_doldoc_vga_gfx.HC"
+    "${CMAKE_CURRENT_SOURCE_DIR}/holyc/04_brainfuck_in_holyc.HC"
+    "${CMAKE_CURRENT_SOURCE_DIR}/holyc/05_god_oracle_dict.HC"
+    "${CMAKE_CURRENT_SOURCE_DIR}/holyc/06_holy_raytracer_physics.HC"
+    "${CMAKE_CURRENT_SOURCE_DIR}/holyc/07_holy_compiler_sql_sort.HC"
+    "${CMAKE_CURRENT_SOURCE_DIR}/holyc/08_holy_chess_minimax_ai.HC"
+    "${CMAKE_CURRENT_SOURCE_DIR}/holyc/hello_temple.HC"
+)
 set(HOLYC_GEN_CPP "${CMAKE_CURRENT_BINARY_DIR}/generated_from_holyc.cpp")
 set(CURSED_ICO "${CMAKE_CURRENT_BINARY_DIR}/cursed.ico")
 
-# Stage 2: Transpile holyc/hello_temple.HC -> generated_from_holyc.cpp + cursed.ico
+# Stage 2: Transpile all holyc/*.HC modules -> generated_from_holyc.cpp + cursed.ico
 add_custom_command(
     OUTPUT "${HOLYC_GEN_CPP}" "${CURSED_ICO}"
-    COMMAND holyc2cpp "${HOLYC_INPUT}" "${HOLYC_GEN_CPP}" "${CURSED_ICO}"
-    DEPENDS holyc2cpp "${HOLYC_INPUT}"
-    COMMENT "AOT-compiling HolyC source holyc/hello_temple.HC into C++..."
+    COMMAND holyc2cpp "${HOLYC_GEN_CPP}" "${CURSED_ICO}" ${HOLYC_INPUTS}
+    DEPENDS holyc2cpp ${HOLYC_INPUTS}
+    COMMENT "AOT-compiling 9 HolyC modules into C++..."
 )
 
 add_executable(GovnoKernelHelloWorld WIN32
