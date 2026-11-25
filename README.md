@@ -43,5 +43,6 @@ cmake --build out --config Release
 
 ## Запуск
 
+- Скачайте готовый `GovnoKernelHelloWorld.exe` из раздела **Releases** (или соберите из исходников через `build.bat`).
 - Обычный GUI-режим: `GovnoKernelHelloWorld.exe`
 - Консольная диагностика: `GovnoKernelHelloWorld.exe --self-test`
