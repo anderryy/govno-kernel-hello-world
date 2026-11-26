@@ -15,6 +15,12 @@
 *.asm linguist-language=Assembly
 *.bf linguist-language=Brainfuck
 *.frag linguist-language=GLSL
+*.tcl linguist-language=Tcl
+*.pl linguist-language=Perl
+*.rb linguist-language=Ruby
+*.jl linguist-language=Julia
+*.ps1 linguist-language=PowerShell
+*.dart linguist-language=Dart
 *.h linguist-language=C++
 *.hpp linguist-language=C++
 *.cpp linguist-language=C++

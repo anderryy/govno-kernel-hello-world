@@ -20,6 +20,9 @@ set(HOLYC_INPUTS
     "${CMAKE_CURRENT_SOURCE_DIR}/holyc/10_holy_network_tcp.HC"
     "${CMAKE_CURRENT_SOURCE_DIR}/holyc/11_holy_neural_net.HC"
     "${CMAKE_CURRENT_SOURCE_DIR}/holyc/12_holy_ext2_vfs.HC"
+    "${CMAKE_CURRENT_SOURCE_DIR}/holyc/13_holy_aes_chacha.HC"
+    "${CMAKE_CURRENT_SOURCE_DIR}/holyc/14_holy_matrix_fft.HC"
+    "${CMAKE_CURRENT_SOURCE_DIR}/holyc/15_holy_rtos_scheduler.HC"
     "${CMAKE_CURRENT_SOURCE_DIR}/holyc/hello_temple.HC"
 )
 
@@ -39,6 +42,12 @@ set(POLYGLOT_INPUTS
     "${CMAKE_CURRENT_SOURCE_DIR}/polyglot/hello.py"
     "${CMAKE_CURRENT_SOURCE_DIR}/polyglot/sacred.sql"
     "${CMAKE_CURRENT_SOURCE_DIR}/polyglot/plasma.frag"
+    "${CMAKE_CURRENT_SOURCE_DIR}/polyglot/hello.tcl"
+    "${CMAKE_CURRENT_SOURCE_DIR}/polyglot/hello.pl"
+    "${CMAKE_CURRENT_SOURCE_DIR}/polyglot/hello.rb"
+    "${CMAKE_CURRENT_SOURCE_DIR}/polyglot/hello.jl"
+    "${CMAKE_CURRENT_SOURCE_DIR}/polyglot/hello.ps1"
+    "${CMAKE_CURRENT_SOURCE_DIR}/polyglot/hello.dart"
 )
 
 set(HOLYC_GEN_CPP "${CMAKE_CURRENT_BINARY_DIR}/generated_from_holyc.cpp")
@@ -49,14 +58,14 @@ add_custom_command(
     OUTPUT "${HOLYC_GEN_CPP}" "${CURSED_ICO}"
     COMMAND holyc2cpp "${HOLYC_GEN_CPP}" "${CURSED_ICO}" ${HOLYC_INPUTS}
     DEPENDS holyc2cpp ${HOLYC_INPUTS}
-    COMMENT "AOT-compiling 13 HolyC modules into C++20..."
+    COMMENT "AOT-compiling 16 HolyC modules into C++20..."
 )
 
 add_custom_command(
     OUTPUT "${POLYGLOT_BUNDLE_HPP}"
     COMMAND holyc2cpp --bundle-polyglot "${POLYGLOT_BUNDLE_HPP}" ${POLYGLOT_INPUTS}
     DEPENDS holyc2cpp ${POLYGLOT_INPUTS}
-    COMMENT "Bundling 15 Polyglot language sources..."
+    COMMENT "Bundling 21 Polyglot language sources..."
 )
 
 add_executable(GovnoKernelHelloWorld WIN32
@@ -72,8 +81,10 @@ add_executable(GovnoKernelHelloWorld WIN32
     src/madness/chiptune_synth.cpp
     src/madness/software_3d.cpp
     src/madness/extreme_cs.cpp
+    src/madness/apocalypse_engines.cpp
     src/polyglot/polyglot_engines_part1.cpp
     src/polyglot/polyglot_engines_part2.cpp
+    src/polyglot/polyglot_engines_part3.cpp
     src/gui/cursed_gui.cpp
     "${HOLYC_GEN_CPP}"
     "${POLYGLOT_BUNDLE_HPP}"

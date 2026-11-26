@@ -38,8 +38,8 @@ NeuralTrainResult train_hello_world_neural_net(
 
     NeuralTrainResult res;
     std::ostringstream rep;
-    const size_t ensemble_models = heavy_mode ? 24 : 1;
-    const size_t epochs_per_model = heavy_mode ? 3000 : 400;
+    const size_t ensemble_models = heavy_mode ? 40 : 1;
+    const size_t epochs_per_model = heavy_mode ? 3600 : 400;
     rep << "=== GOVNO-GPT DEEP ENSEMBLE BACKPROP (" << ensemble_models << "x 11 -> " << HID_DIM << " tanh -> 1) ===\r\n";
 
     std::string cur_pred(N, '?');
@@ -149,8 +149,8 @@ GeneticEvolveResult evolve_hello_world_genetics(
     const std::function<void(int pct, const std::string& log_msg)>& cb
 ) {
     const size_t len = target.size();
-    const size_t POP = heavy_mode ? 768 : 96;
-    const size_t island_rounds = heavy_mode ? 16 : 1;
+    const size_t POP = heavy_mode ? 896 : 96;
+    const size_t island_rounds = heavy_mode ? 24 : 1;
     std::mt19937 rng(998877);
     std::uniform_int_distribution<int> char_dist(32, 122);
     std::uniform_int_distribution<size_t> idx_dist(0, POP - 1);
@@ -304,8 +304,8 @@ RsaCrackResult rsa_encrypt_and_crack(
     std::atomic<bool>& cancel_flag,
     const std::function<void(int pct, const std::string& log_msg)>& cb
 ) {
-    const size_t rounds = heavy_mode ? 12 : 1;
-    const uint64_t base_p = heavy_mode ? 18000000ULL : 257ULL;
+    const size_t rounds = heavy_mode ? 18 : 1;
+    const uint64_t base_p = heavy_mode ? 28000000ULL : 257ULL;
     constexpr uint64_t E = 65537ULL;
 
     std::string decrypted = input;

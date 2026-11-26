@@ -42,7 +42,7 @@ Class CHolyConfig {
 }
 
 U0 BlessRingZero() {
-  "$FG,YELLOW$[HolyC AOT] Executing All 13 Compiled TempleOS HolyC Modules!$FG$\n";
+  "$FG,YELLOW$[HolyC AOT] Executing All 16 Compiled TempleOS HolyC Modules!$FG$\n";
 }
 
 I64 ValidatePrintableAscii(I64 ch) {
@@ -83,6 +83,9 @@ U0 Main() {
   cfg.net_sig        = HolyNetStackVerify();
   cfg.nn_dft_sig     = HolyNeuralAndDftVerify();
   cfg.vfs_sig        = HolyVfsAndHuffmanVerify();
+  HolyAesAndChaChaVerify;
+  HolyMatrixAndWhtVerify;
+  HolyRtosSchedulerVerify;
 
   if (cfg.boot_sig > 0 && cfg.crypto_sig > 0 && cfg.bf_sig > 0 && cfg.vfs_sig > 0) {
     EmitAotHello;

@@ -293,6 +293,47 @@ void Software3DRenderer::render_plasma_tunnel_mode(uint64_t tick, bool disco_cha
     }
 }
 
+void Software3DRenderer::render_interference_orbit_mode(uint64_t tick, bool disco_chaos) {
+    float t = static_cast<float>(tick) * (disco_chaos ? 0.16f : 0.08f);
+    float x1 = width_ * 0.5f + std::cos(t * 0.7f) * 90.0f;
+    float y1 = height_ * 0.5f + std::sin(t * 1.1f) * 55.0f;
+    float x2 = width_ * 0.5f + std::cos(-t * 0.9f + 2.1f) * 95.0f;
+    float y2 = height_ * 0.5f + std::sin(-t * 0.6f + 1.2f) * 50.0f;
+
+    for (int y = 0; y < height_; ++y) {
+        for (int x = 0; x < width_; ++x) {
+            float d1 = std::sqrt((x - x1) * (x - x1) + (y - y1) * (y - y1));
+            float d2 = std::sqrt((x - x2) * (x - x2) + (y - y2) * (y - y2));
+            float wave = std::sin(d1 * 0.18f - t * 2.5f) + std::sin(d2 * 0.18f - t * 2.1f);
+            int hue = static_cast<int>((wave + 2.0f) * 90.0f + tick * 5);
+            uint32_t col = hsv_argb(hue);
+            if (d1 < 10.0f || d2 < 10.0f) col = 0xFFFFFF;
+            fb_[static_cast<size_t>(y * width_ + x)] = col;
+        }
+    }
+}
+
+void Software3DRenderer::render_dna_helix_mode(uint64_t tick, bool disco_chaos) {
+    std::fill(fb_.begin(), fb_.end(), disco_chaos ? 0x220033U : 0x040A14U);
+    float t = static_cast<float>(tick) * (disco_chaos ? 0.15f : 0.07f);
+    constexpr int STEPS = 32;
+    int prev_x1 = -1, prev_y1 = -1, prev_x2 = -1, prev_y2 = -1;
+    for (int i = 0; i < STEPS; ++i) {
+        float y_n = static_cast<float>(i) / static_cast<float>(STEPS - 1);
+        int py = 12 + static_cast<int>(y_n * (height_ - 24));
+        float ang = y_n * 9.5f + t;
+        int x1 = width_ / 2 + static_cast<int>(std::sin(ang) * 95.0f);
+        int x2 = width_ / 2 + static_cast<int>(std::sin(ang + 3.1415926f) * 95.0f);
+        uint32_t rung_col = hsv_argb(static_cast<int>(i * 18 + tick * 4));
+        draw_line(x1, py, x2, py, rung_col);
+        if (i > 0) {
+            draw_line(prev_x1, prev_y1, x1, py, 0x00FFFF);
+            draw_line(prev_x2, prev_y2, x2, py, 0xFF00FF);
+        }
+        prev_x1 = x1; prev_y1 = py; prev_x2 = x2; prev_y2 = py;
+    }
+}
+
 void Software3DRenderer::render_loss_graph(const std::vector<float>& loss_hist) {
     if (loss_hist.empty()) return;
     int gx = 8, gy = height_ - 72, gw = 118, gh = 64;
@@ -326,6 +367,10 @@ void Software3DRenderer::render_demoscene_frame(
         render_mandelbrot_mode(tick, disco_chaos);
     } else if (mode == Render3DMode::PLASMA_TUNNEL) {
         render_plasma_tunnel_mode(tick, disco_chaos);
+    } else if (mode == Render3DMode::GRAY_SCOTT_ORBIT) {
+        render_interference_orbit_mode(tick, disco_chaos);
+    } else if (mode == Render3DMode::DNA_DOUBLE_HELIX) {
+        render_dna_helix_mode(tick, disco_chaos);
     } else {
         render_cube_mode(tick, completed, disco_chaos);
     }

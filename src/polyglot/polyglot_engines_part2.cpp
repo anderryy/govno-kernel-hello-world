@@ -423,7 +423,7 @@ PolyglotSuiteReport run_all_polyglot_engines(const std::string& seed_payload) {
     PolyglotSuiteReport report;
     const auto& assets = govno::polyglot_bundle::get_bundled_assets();
 
-    std::ostringstream combined, systems_stream, prolog_cbl_stream, lisp_forth_stream;
+    std::ostringstream combined, systems_stream, prolog_cbl_stream, lisp_forth_stream, scripting_stream;
     bool all_ok = !assets.empty();
 
     for (const auto& asset : assets) {
@@ -476,6 +476,24 @@ PolyglotSuiteReport run_all_polyglot_engines(const std::string& seed_payload) {
         } else if (fn.ends_with(".frag")) {
             r = run_glsl_analyzer(src, fn);
             systems_stream << "[GLSL]    " << r.trace_summary << "\n";
+        } else if (fn.ends_with(".tcl")) {
+            r = run_tcl_engine(src, fn);
+            scripting_stream << "[TCL]     " << r.trace_summary << "\n";
+        } else if (fn.ends_with(".pl")) {
+            r = run_perl_engine(src, fn);
+            scripting_stream << "[PERL]    " << r.trace_summary << "\n";
+        } else if (fn.ends_with(".rb")) {
+            r = run_ruby_engine(src, fn);
+            scripting_stream << "[RUBY]    " << r.trace_summary << "\n";
+        } else if (fn.ends_with(".jl")) {
+            r = run_julia_engine(src, fn);
+            scripting_stream << "[JULIA]   " << r.trace_summary << "\n";
+        } else if (fn.ends_with(".ps1")) {
+            r = run_powershell_engine(src, fn);
+            scripting_stream << "[PWSH]    " << r.trace_summary << "\n";
+        } else if (fn.ends_with(".dart")) {
+            r = run_dart_engine(src, fn);
+            scripting_stream << "[DART]    " << r.trace_summary << "\n";
         }
 
         report.total_polyglot_bytes += r.source_bytes;
@@ -490,6 +508,7 @@ PolyglotSuiteReport run_all_polyglot_engines(const std::string& seed_payload) {
     report.lisp_forth_trace = lisp_forth_stream.str();
     report.prolog_cbl_f90_trace = prolog_cbl_stream.str();
     report.systems_lang_trace = systems_stream.str();
+    report.scripting_lang_trace = scripting_stream.str();
     report.combined_summary = combined.str();
     report.final_payload = all_ok ? "Hello world" : ("POLYGLOT_FAIL_FROM_" + seed_payload);
     return report;

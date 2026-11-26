@@ -3,7 +3,7 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 echo =======================================================================
-echo   GOVNO KERNEL ENTERPRISE BUILD SYSTEM v6.0 (13 HOLYC + 15 POLYGLOT VMs)
+echo   GOVNO KERNEL ENTERPRISE BUILD SYSTEM v7.0 (16 HOLYC + 21 POLYGLOT VMs)
 echo =======================================================================
 
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -43,7 +43,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [STAGE 2/5] Compiling 13 HolyC modules (holyc\*.HC) into C++20 and generating cursed.ico...
+echo [STAGE 2/5] Compiling 16 HolyC modules (holyc\*.HC) into C++20 and generating cursed.ico...
 build\holyc2cpp.exe build\generated_from_holyc.cpp build\cursed.ico ^
     holyc\01_temple_boot.HC ^
     holyc\02_holy_math_crypto.HC ^
@@ -57,13 +57,16 @@ build\holyc2cpp.exe build\generated_from_holyc.cpp build\cursed.ico ^
     holyc\10_holy_network_tcp.HC ^
     holyc\11_holy_neural_net.HC ^
     holyc\12_holy_ext2_vfs.HC ^
+    holyc\13_holy_aes_chacha.HC ^
+    holyc\14_holy_matrix_fft.HC ^
+    holyc\15_holy_rtos_scheduler.HC ^
     holyc\hello_temple.HC
 if errorlevel 1 (
     echo [FATAL] HolyC AOT compilation failed!
     exit /b 1
 )
 
-echo [STAGE 3/5] Bundling 15 Polyglot language sources (polyglot\*) into generated_polyglot_bundle.hpp...
+echo [STAGE 3/5] Bundling 21 Polyglot language sources (polyglot\*) into generated_polyglot_bundle.hpp...
 build\holyc2cpp.exe --bundle-polyglot build\generated_polyglot_bundle.hpp ^
     polyglot\hello_x86_64.asm ^
     polyglot\hello_2d.b93 ^
@@ -79,7 +82,13 @@ build\holyc2cpp.exe --bundle-polyglot build\generated_polyglot_bundle.hpp ^
     polyglot\hello.lua ^
     polyglot\hello.py ^
     polyglot\sacred.sql ^
-    polyglot\plasma.frag
+    polyglot\plasma.frag ^
+    polyglot\hello.tcl ^
+    polyglot\hello.pl ^
+    polyglot\hello.rb ^
+    polyglot\hello.jl ^
+    polyglot\hello.ps1 ^
+    polyglot\hello.dart
 if errorlevel 1 (
     echo [FATAL] Polyglot bundle generation failed!
     exit /b 1
@@ -92,7 +101,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [STAGE 5/5] Compiling 16 C++20 modules + HolyC AOT + Polyglot VMs into GovnoKernelHelloWorld.exe...
+echo [STAGE 5/5] Compiling 18 C++20 modules + HolyC AOT + Polyglot VMs into GovnoKernelHelloWorld.exe...
 cl /nologo /std:c++20 /utf-8 /EHsc /O2 ^
     /DUNICODE /D_UNICODE /DNOMINMAX /DWIN32_LEAN_AND_MEAN ^
     /Iinclude /Isrc /Ibuild ^
@@ -110,8 +119,10 @@ cl /nologo /std:c++20 /utf-8 /EHsc /O2 ^
     src\madness\chiptune_synth.cpp ^
     src\madness\software_3d.cpp ^
     src\madness\extreme_cs.cpp ^
+    src\madness\apocalypse_engines.cpp ^
     src\polyglot\polyglot_engines_part1.cpp ^
     src\polyglot\polyglot_engines_part2.cpp ^
+    src\polyglot\polyglot_engines_part3.cpp ^
     src\gui\cursed_gui.cpp ^
     build\generated_from_holyc.cpp ^
     build\govno.res ^
@@ -124,5 +135,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo [SUCCESS] Built GovnoKernelHelloWorld.exe v6.0 (13x HolyC AOT + 15 Polyglot VMs + SHA256 + 4D GFX)!
+echo [SUCCESS] Built GovnoKernelHelloWorld.exe v7.0 (16x HolyC AOT + 21 Polyglot VMs + AES128 + SHA256 + 6D GFX)!
 endlocal

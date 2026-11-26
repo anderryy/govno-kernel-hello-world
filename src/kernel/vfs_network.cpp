@@ -105,7 +105,7 @@ BlockchainMiningResult mine_hello_world_blockchain_block(
 ) {
     BlockchainMiningResult res;
     const size_t num_blocks = heavy_mode ? 6 : 1;
-    const int diff_bits = heavy_mode ? 20 : 12;
+    const int diff_bits = heavy_mode ? 21 : 12;
 
     std::string prev_hash = "0x000000000000deadbeef00000000000000000000000000000000000000000000";
     std::ostringstream ld;
@@ -167,7 +167,7 @@ BlockchainMiningResult mine_hello_world_blockchain_block(
             ++res.hashes_computed;
 
             bool match = heavy_mode
-                ? (digest[0] == 0x00 && digest[1] == 0x00 && (digest[2] & 0xF0) == 0x00)
+                ? (digest[0] == 0x00 && digest[1] == 0x00 && (digest[2] & 0xF8) == 0x00)
                 : (digest[0] == 0x00 && (digest[1] & 0xF0) == 0x00);
             if (match) break;
             ++nonce;

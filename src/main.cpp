@@ -37,7 +37,7 @@ int run_headless_self_test(bool heavy_mode) {
     size_t poly_langs = 0, poly_bytes = 0, poly_steps = 0;
     int64_t holyc_aot_shift = 0;
     float ml_loss = 0.0f;
-    uint64_t rsa_n = 0, pow_hashes = 0, vm_cycles = 0, elapsed_ms = 0;
+    uint64_t rsa_n = 0, pow_hashes = 0, vm_cycles = 0, elapsed_ms = 0, aes_keys = 0, rays_traced = 0;
 
     {
         std::lock_guard<std::mutex> lock(govno::g_state().mtx);
@@ -66,10 +66,12 @@ int run_headless_self_test(bool heavy_mode) {
         poly_langs = st.artifacts.polyglot_languages_count;
         poly_bytes = st.artifacts.polyglot_total_bytes;
         poly_steps = st.artifacts.polyglot_total_steps;
+        aes_keys = st.artifacts.aes_keys_tested;
+        rays_traced = st.artifacts.rays_traced;
     }
 
     std::printf(
-        "GOVNO-KERNEL TEMPLE-OS v6.0 (%s MODE, ZERO SLEEP) SELF-TEST\n"
+        "GOVNO-KERNEL TEMPLE-OS v7.0 (%s MODE, ZERO SLEEP) SELF-TEST\n"
         "CPU: %s\n"
         "Result: \"%s\" (elapsed_ms=%llu)\n"
         "HolyC AOT HOLY_SHIFT (2`3): %lld\n"
@@ -79,6 +81,8 @@ int run_headless_self_test(bool heavy_mode) {
         "Neural Net SGD epochs: %zu (final MSE=%.6f)\n"
         "Genetic Algorithm generations: %zu\n"
         "RSA modulus cracked: %llu\n"
+        "AES-128 keys brute-forced: %llu\n"
+        "Monte-Carlo Path Tracer rays: %llu\n"
         "HolyC VM opcodes: %zu | HolyC VM cycles: %zu\n"
         "TempleOS GodWords: %s\n"
         "A* Maze nodes expanded: %zu\n"
@@ -102,6 +106,8 @@ int run_headless_self_test(bool heavy_mode) {
         ml_loss,
         ga_gens,
         static_cast<unsigned long long>(rsa_n),
+        static_cast<unsigned long long>(aes_keys),
+        static_cast<unsigned long long>(rays_traced),
         hc_ops,
         hc_cyc,
         god_words.c_str(),

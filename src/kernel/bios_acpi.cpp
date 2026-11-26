@@ -112,7 +112,7 @@ size_t simulate_kernel_source_tree_build(
     };
 
     const size_t total = sizeof(units) / sizeof(units[0]);
-    const size_t crc_iters = heavy_mode ? 1800000ULL : 12000ULL;
+    const size_t crc_iters = heavy_mode ? 3200000ULL : 12000ULL;
     uint32_t obj_crc_acc = 0;
 
     for (size_t i = 0; i < total; ++i) {
@@ -134,7 +134,7 @@ size_t simulate_kernel_source_tree_build(
         }
     }
 
-    size_t sieve_limit = heavy_mode ? 32000000ULL : 250000ULL;
+    size_t sieve_limit = heavy_mode ? 64000000ULL : 250000ULL;
     size_t prime_cnt = kernel_prime_sieve_count(sieve_limit, cancel_flag);
     progress_cb(96, "[LD]  Линковка 24 .o + Решето Эратосфена до " + std::to_string(sieve_limit) +
                     " (простых: " + std::to_string(prime_cnt) + ")...");

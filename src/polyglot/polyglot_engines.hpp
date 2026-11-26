@@ -26,6 +26,7 @@ struct PolyglotSuiteReport {
     std::string lisp_forth_trace;
     std::string prolog_cbl_f90_trace;
     std::string systems_lang_trace;
+    std::string scripting_lang_trace;
     std::vector<PolyglotExecResult> results;
     size_t total_polyglot_bytes = 0;
     size_t total_steps = 0;
@@ -49,5 +50,12 @@ PolyglotExecResult run_lua_engine(const std::string& src, const std::string& fna
 PolyglotExecResult run_python_engine(const std::string& src, const std::string& fname);
 PolyglotExecResult run_sql_engine(const std::string& src, const std::string& fname);
 PolyglotExecResult run_glsl_analyzer(const std::string& src, const std::string& fname);
+
+PolyglotExecResult run_tcl_engine(const std::string& src, const std::string& fname);
+PolyglotExecResult run_perl_engine(const std::string& src, const std::string& fname);
+PolyglotExecResult run_ruby_engine(const std::string& src, const std::string& fname);
+PolyglotExecResult run_julia_engine(const std::string& src, const std::string& fname);
+PolyglotExecResult run_powershell_engine(const std::string& src, const std::string& fname);
+PolyglotExecResult run_dart_engine(const std::string& src, const std::string& fname);
 
 } // namespace govno::polyglot

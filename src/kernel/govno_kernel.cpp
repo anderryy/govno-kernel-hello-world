@@ -7,6 +7,7 @@
 #include "madness/ml_genetics_crypto.hpp"
 #include "madness/maze_astar.hpp"
 #include "madness/extreme_cs.hpp"
+#include "madness/apocalypse_engines.hpp"
 #include "polyglot/polyglot_engines.hpp"
 #include "cursed_macros.hpp"
 
@@ -216,7 +217,7 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool fast
 
     // 0. Execute native code AHEAD-OF-TIME compiled from all 9 holyc/*.HC modules during build.bat!
     auto holyc_aot = govno::holyc_aot::run_compiled_holyc_aot();
-    append_kernel_log("[HOLYC-AOT] Вызван нативный код из 9 скомпилированных модулей holyc/*.HC!");
+    append_kernel_log("[HOLYC-AOT] Вызван нативный код из 16 скомпилированных модулей holyc/*.HC!");
     {
         std::istringstream aot_iss(holyc_aot.aot_log);
         std::string aln;
@@ -348,21 +349,21 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool fast
                       std::to_string(maze.path_length) + " шагов (раскрыто узлов: " +
                       std::to_string(maze.nodes_expanded) + ")");
 
-    // 6C. Execute all 15 bundled polyglot languages
+    // 6C. Execute all 21 bundled polyglot languages
     {
         std::lock_guard<std::mutex> lock(g_state().mtx);
-        g_state().status_banner = "Запуск 15 полиглот-ВМ (x86-64, Befunge-93, Forth, Lisp, Prolog, COBOL, Rust, Zig...)";
+        g_state().status_banner = "Запуск 21 полиглот-ВМ (x86-64, Befunge, Forth, Lisp, Prolog, COBOL, Rust, Zig, Ruby, Julia...)";
     }
     auto poly = govno::polyglot::run_all_polyglot_engines(maze.delivered_payload);
-    append_kernel_log("[POLYGLOT-15] Исполнено " + std::to_string(poly.results.size()) +
+    append_kernel_log("[POLYGLOT-21] Исполнено " + std::to_string(poly.results.size()) +
                       " языков (" + std::to_string(poly.total_polyglot_bytes) + " Б, " +
                       std::to_string(poly.total_steps) + " шагов VM) -> \"" + poly.final_payload + "\"");
 
-    // 6D. Extreme CS Codecs & Heavy Math Gauntlet (LU 220x220 + N-Body + 12-Queens + 128x128 Life + 1024x576 Mandelbrot)
+    // 6D. Extreme CS Codecs & Heavy Math Gauntlet (LU 500x500 + N-Body 960x340 + 14-Queens + Life 256x256 + Mandelbrot 1440p)
     {
         std::lock_guard<std::mutex> lock(g_state().mtx);
         g_state().status_banner = heavy_mode
-            ? "Тяжёлая математика: СЛАУ 220x220 + N-Body гравитация + 12-Ферзей + Life 128x128 + Mandelbrot..."
+            ? "Тяжёлая математика: СЛАУ 500x500 + N-Body 960x340 + 14-Ферзей + Life 256x256 + Mandelbrot 2K..."
             : "Запуск CS-испытаний: DFT + Хаффман + Судоку + GameOfLife + СЛАУ...";
     }
     auto dft = govno::madness::dft_idft_roundtrip(poly.final_payload);
@@ -376,13 +377,34 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool fast
         [&](int pct, const std::string& msg) {
             append_kernel_log(msg);
             std::lock_guard<std::mutex> lock(g_state().mtx);
-            g_state().compiler_progress = 10 + (pct * 50) / 100;
+            g_state().compiler_progress = 10 + (pct * 25) / 100;
         }
     );
     if (cancel_flag.load()) return;
 
-    std::string cs_verified_out = gauntlet.ok ? gauntlet.output : "GAUNTLET_FAIL";
-    append_kernel_log("[DSP/MATH-GAUNTLET] Пройдены СЛАУ/N-Body/Ферзи/Life/Mandelbrot -> \"" + cs_verified_out + "\"");
+    // 6E. Apocalypse Hardware Burner: AES-128 Key Brute Force + Gray-Scott PDE + JPEG 2D-DCT + TSP 256 + BigInt 2600! + PathTracer GI
+    {
+        std::lock_guard<std::mutex> lock(g_state().mtx);
+        g_state().status_banner = heavy_mode
+            ? "АПОКАЛИПСИС ЦП: Брутфорс AES-128 + Gray-Scott PDE + 2D-DCT 1024px + TSP-256 + PathTracer..."
+            : "Быстрая проверка AES-128 + Gray-Scott PDE + 2D-DCT + PathTracer...";
+    }
+    auto apoc = govno::madness::run_apocalypse_engines(
+        gauntlet.ok ? gauntlet.output : "GAUNTLET_FAIL",
+        heavy_mode,
+        cancel_flag,
+        [&](int pct, const std::string& msg) {
+            append_kernel_log(msg);
+            std::lock_guard<std::mutex> lock(g_state().mtx);
+            g_state().compiler_progress = 35 + (pct * 25) / 100;
+        }
+    );
+    if (cancel_flag.load()) return;
+
+    std::string cs_verified_out = apoc.ok ? apoc.verified_output : "APOCALYPSE_FAIL";
+    append_kernel_log("[APOCALYPSE] AES-128(" + std::to_string(apoc.aes_keys_tested) + " keys) + PathTracer(" +
+                      std::to_string(apoc.total_rays_traced) + " rays) + 2600!(" +
+                      std::to_string(apoc.bigint_digits) + " digits) -> \"" + cs_verified_out + "\"");
 
     {
         std::lock_guard<std::mutex> lock(g_state().mtx);
@@ -401,7 +423,7 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool fast
     compiled.ml_genetics_dump = nn.report + ga.report;
     compiled.rsa_lz77_morse_dump = rsa.report + morse.report;
     compiled.holyc_aot_dump =
-        "=== BUILD-TIME HOLYC AOT (from 13 modules holyc/*.HC) ===\r\n" +
+        "=== BUILD-TIME HOLYC AOT (from 16 modules holyc/*.HC) ===\r\n" +
         holyc_aot.aot_log + "\r\nEmitted AOT String: \"" + holyc_aot.emitted_text + "\"\r\n" +
         "HOLY_SHIFT (2`3) = " + std::to_string(holyc_aot.magic_power) + "\r\n\r\n" +
         "=== TRANSPILED C++ GENERATED AT BUILD TIME ===\r\n" +
@@ -415,11 +437,15 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool fast
     compiled.lisp_forth_dump = poly.lisp_forth_trace;
     compiled.prolog_cbl_f90_dump = poly.prolog_cbl_f90_trace;
     compiled.systems_lang_dump = poly.systems_lang_trace;
+    compiled.scripting_lang_dump = poly.scripting_lang_trace;
     compiled.dft_huffman_dump = dft.dump + "\r\n" + huff.dump;
     compiled.sudoku_life_dump = sud.dump + "\r\n" + life.dump + gauntlet.report;
+    compiled.apocalypse_dump = apoc.dump;
     compiled.polyglot_languages_count = poly.results.size();
     compiled.polyglot_total_bytes = poly.total_polyglot_bytes;
     compiled.polyglot_total_steps = poly.total_steps;
+    compiled.aes_keys_tested = apoc.aes_keys_tested;
+    compiled.rays_traced = apoc.total_rays_traced;
     compiled.astar_nodes_expanded = maze.nodes_expanded;
     compiled.holyc_aot_shift = holyc_aot.magic_power;
     compiled.holyc_opcodes_count = hc.opcodes_count;
@@ -576,7 +602,7 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool fast
         g_state().driver_net_progress = 100;
         g_state().completed = !cancel_flag.load();
         g_state().stage = PipelineStage::STAGE_15_GRAND_FINALE_HELLO_WORLD;
-        g_state().status_banner = "ТРИУМФ v6.0! 'Hello world' ПРОВЕРЕН ЧЕРЕЗ 13 HOLYC + 15 ЯЗЫКОВ + SHA-256 + DFT + ХАФФМАН + СУДОКУ + LIFE + 3D!";
+        g_state().status_banner = "ТРИУМФ v7.0! 'Hello world' ЧЕРЕЗ 16 HOLYC + 21 ЯЗЫК + AES-128 + SHA256 + N-BODY + PDE + PATHTRACER!";
         final_str = g_state().final_vga_output;
     }
 

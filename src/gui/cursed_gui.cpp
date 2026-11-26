@@ -30,17 +30,21 @@ constexpr int IDC_TAB_X86_ASM     = 1106;
 constexpr int IDC_TAB_BEFUNGE     = 1107;
 constexpr int IDC_TAB_DFT_HUFF    = 1108;
 constexpr int IDC_TAB_SUDOKU_LIFE = 1109;
-constexpr int IDC_TAB_ASTAR       = 1110;
-constexpr int IDC_TAB_ML_GA       = 1111;
-constexpr int IDC_TAB_RSA_MORSE   = 1112;
-constexpr int IDC_TAB_XMLSQL      = 1113;
-constexpr int IDC_TAB_LISP_FORTH  = 1114;
-constexpr int IDC_TAB_PROLOG_CBL  = 1115;
-constexpr int IDC_TAB_SYSTEMS     = 1116;
-constexpr int IDC_TAB_IR          = 1117;
-constexpr int IDC_TAB_BRAINFUCK   = 1118;
-constexpr int IDC_TAB_SUBLEQ      = 1119;
-constexpr int IDC_TAB_ASM_NET_POW = 1120;
+constexpr int IDC_TAB_APOCALYPSE  = 1110;
+constexpr int IDC_TAB_ASTAR       = 1111;
+constexpr int IDC_TAB_ML_GA       = 1112;
+constexpr int IDC_TAB_RSA_MORSE   = 1113;
+constexpr int IDC_TAB_XMLSQL      = 1114;
+constexpr int IDC_TAB_LISP_FORTH  = 1115;
+constexpr int IDC_TAB_PROLOG_CBL  = 1116;
+constexpr int IDC_TAB_SYSTEMS     = 1117;
+constexpr int IDC_TAB_SCRIPTING   = 1118;
+constexpr int IDC_TAB_IR          = 1119;
+constexpr int IDC_TAB_LISP_C99    = 1120;
+constexpr int IDC_TAB_BRAINFUCK   = 1121;
+constexpr int IDC_TAB_SUBLEQ      = 1122;
+constexpr int IDC_TAB_ASM_NET_POW = 1123;
+constexpr int IDC_TAB_TOKENS_AST  = 1124;
 
 constexpr int IDC_BTN_REBUILD     = 1201;
 constexpr int IDC_BTN_TURBO       = 1202;
@@ -65,6 +69,7 @@ enum class ActiveTab {
     BEFUNGE,
     DFT_HUFF,
     SUDOKU_LIFE,
+    APOCALYPSE,
     ASTAR,
     ML_GA,
     RSA_MORSE,
@@ -72,10 +77,13 @@ enum class ActiveTab {
     LISP_FORTH,
     PROLOG_CBL,
     SYSTEMS,
+    SCRIPTING,
     IR,
+    LISP_C99,
     BRAINFUCK,
     SUBLEQ,
-    ASM_NET_POW
+    ASM_NET_POW,
+    TOKENS_AST
 };
 
 std::wstring utf8_to_wide(const std::string& utf8) {
@@ -268,22 +276,22 @@ void update_layout(HWND hwnd) {
     int left_w = std::max(460, w - right_panel_w - 30);
     int left_x = 12;
 
-    // 20 tab buttons in 2 rows of 10
-    int tab_y0 = 164;
-    int tab_h = 22;
-    int cols = 10;
+    // 24 tab buttons in 3 rows of 8
+    int tab_y0 = 162;
+    int tab_h = 20;
+    int cols = 8;
     int tab_w = std::max(44, (left_w - (cols - 1) * 3) / cols);
     for (size_t i = 0; i < c.tab_buttons.size(); ++i) {
-        int row = static_cast<int>(i / 10);
-        int col = static_cast<int>(i % 10);
-        MoveWindow(c.tab_buttons[i], left_x + col * (tab_w + 3), tab_y0 + row * (tab_h + 3), tab_w, tab_h, TRUE);
+        int row = static_cast<int>(i / 8);
+        int col = static_cast<int>(i % 8);
+        MoveWindow(c.tab_buttons[i], left_x + col * (tab_w + 3), tab_y0 + row * (tab_h + 2), tab_w, tab_h, TRUE);
     }
 
     int bottom_btn_h = 34;
     int canvas_h = 228;
     int bottom_y = h - bottom_btn_h - 10;
     int canvas_y = bottom_y - canvas_h - 8;
-    int log_y = tab_y0 + 2 * (tab_h + 3) + 4;
+    int log_y = tab_y0 + 3 * (tab_h + 2) + 4;
     int log_h = std::max(115, canvas_y - log_y - 8);
 
     if (c.edit_log) {
@@ -328,20 +336,18 @@ void sync_terminal_text() {
                 case ActiveTab::BEFUNGE:     text_utf8 = g_state().artifacts.befunge_2d_dump; break;
                 case ActiveTab::DFT_HUFF:    text_utf8 = g_state().artifacts.dft_huffman_dump; break;
                 case ActiveTab::SUDOKU_LIFE: text_utf8 = g_state().artifacts.sudoku_life_dump; break;
+                case ActiveTab::APOCALYPSE:  text_utf8 = g_state().artifacts.apocalypse_dump; break;
                 case ActiveTab::ASTAR:       text_utf8 = g_state().artifacts.astar_maze_dump; break;
                 case ActiveTab::ML_GA:       text_utf8 = g_state().artifacts.ml_genetics_dump; break;
                 case ActiveTab::RSA_MORSE:   text_utf8 = g_state().artifacts.rsa_lz77_morse_dump; break;
                 case ActiveTab::XMLSQL:      text_utf8 = g_state().artifacts.xml_json_sql_dump; break;
-                case ActiveTab::LISP_FORTH:  text_utf8 = g_state().artifacts.lisp_forth_dump + "\r\n" + g_state().artifacts.lisp_and_c_dump; break;
+                case ActiveTab::LISP_FORTH:  text_utf8 = g_state().artifacts.lisp_forth_dump; break;
                 case ActiveTab::PROLOG_CBL:  text_utf8 = g_state().artifacts.prolog_cbl_f90_dump; break;
                 case ActiveTab::SYSTEMS:     text_utf8 = g_state().artifacts.systems_lang_dump; break;
-                case ActiveTab::IR:
-                    text_utf8 =
-                        g_state().artifacts.govnoscript_source + "\r\n\r\n" +
-                        g_state().artifacts.tokens_dump + "\r\n" +
-                        g_state().artifacts.ast_dump + "\r\n" +
-                        g_state().artifacts.ir_dump;
-                    break;
+                case ActiveTab::SCRIPTING:   text_utf8 = g_state().artifacts.scripting_lang_dump; break;
+                case ActiveTab::TOKENS_AST:  text_utf8 = g_state().artifacts.govnoscript_source + "\r\n\r\n" + g_state().artifacts.tokens_dump + "\r\n" + g_state().artifacts.ast_dump; break;
+                case ActiveTab::IR:          text_utf8 = g_state().artifacts.ir_dump; break;
+                case ActiveTab::LISP_C99:    text_utf8 = g_state().artifacts.lisp_and_c_dump; break;
                 case ActiveTab::BRAINFUCK:
                     text_utf8 =
                         "; === OPTIMIZED BRAINFUCK (" + std::to_string(g_state().artifacts.bf_length) + " chars) ===\r\n" +
@@ -540,7 +546,7 @@ void paint_window_double_buffered(HWND hwnd) {
 
     SetBkMode(hdc, TRANSPARENT);
     HFONT old_f = static_cast<HFONT>(SelectObject(hdc, c.font_comic_title));
-    const wchar_t* hdr = L"ГОВНО-ЯДРО v6.0: 13 HOLYC AOT + 15 ЯЗЫКОВ + SHA256 + DFT + ХАФФМАН + СУДОКУ + LIFE + 4D GFX";
+    const wchar_t* hdr = L"ГОВНО-ЯДРО v7.0: 16 HOLYC + 21 ЯЗЫК + AES128 + SHA256 + N-BODY + PDE + PATHTRACER + 6D";
     RECT hdr_sh{58, 10, w - 58, 38};
     RECT hdr_fg{56, 8, w - 60, 36};
     SetTextColor(hdc, RGB(0, 255, 255));
@@ -556,10 +562,10 @@ void paint_window_double_buffered(HWND hwnd) {
 
     // 4 Progress Bars
     int bar_w = std::max(200, w - 24);
-    draw_cursed_progress_bar(hdc, 12, 76,  bar_w, 17, L"1. HOLYC AOT (13 .HC) + ЯДРО (24 .o)", snap.kernel_progress, RGB(0, 210, 0));
-    draw_cursed_progress_bar(hdc, 12, 96,  bar_w, 17, L"2. НЕЙРОСЕТЬ SGD + ГЕНЕТИКА + RSA + МОРЗЕ", snap.ml_crypto_progress, RGB(255, 190, 0));
-    draw_cursed_progress_bar(hdc, 12, 116, bar_w, 17, L"3. HOLYC VM + 15 ЯЗЫКОВ + DFT/ХФ + СУДОКУ/LIFE", snap.compiler_progress, RGB(255, 0, 255));
-    draw_cursed_progress_bar(hdc, 12, 136, bar_w, 17, L"4. SHA-256 PoW + TCP/IP + ДРАЙВЕРЫ + GOVNOCPU", snap.driver_net_progress, RGB(0, 200, 255));
+    draw_cursed_progress_bar(hdc, 12, 76,  bar_w, 17, L"1. HOLYC AOT (16 .HC) + ЯДРО 24.o + РЕШЕТО 64M", snap.kernel_progress, RGB(0, 210, 0));
+    draw_cursed_progress_bar(hdc, 12, 96,  bar_w, 17, L"2. 40x SGD (144K ЭПОХ) + ГА + 49-BIT RSA + МОРЗЕ", snap.ml_crypto_progress, RGB(255, 190, 0));
+    draw_cursed_progress_bar(hdc, 12, 116, bar_w, 17, L"3. 21 ЯЗЫК + AES128 + СЛАУ + NBODY + PDE + DCT + RAY", snap.compiler_progress, RGB(255, 0, 255));
+    draw_cursed_progress_bar(hdc, 12, 136, bar_w, 17, L"4. SHA-256 PoW (20-BIT) + TCP/IP + VFS + GOVNOCPU", snap.driver_net_progress, RGB(0, 200, 255));
 
     // Right Monitor
     int right_panel_w = 385;
@@ -754,11 +760,12 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 {IDC_TAB_HOLYC_AOT,   L"HOLYC AOT"},
                 {IDC_TAB_HOLYC_SRC,   L"HOLYC .HC"},
                 {IDC_TAB_HOLYC_VM,    L"HOLYC VM"},
-                {IDC_TAB_POLYGLOT,    L"15 ЯЗЫКОВ"},
+                {IDC_TAB_POLYGLOT,    L"21 ЯЗЫК"},
                 {IDC_TAB_X86_ASM,     L"X86-64 ASM"},
                 {IDC_TAB_BEFUNGE,     L"BEFUNGE 2D"},
                 {IDC_TAB_DFT_HUFF,    L"DFT+ХАФФ"},
-                {IDC_TAB_SUDOKU_LIFE, L"LIFE+СУДОК"},
+                {IDC_TAB_SUDOKU_LIFE, L"N-BODY+ЛУ"},
+                {IDC_TAB_APOCALYPSE,  L"AES/PDE/GI"},
                 {IDC_TAB_ASTAR,       L"A* ПУТЬ"},
                 {IDC_TAB_ML_GA,       L"ИИ + ГЕН"},
                 {IDC_TAB_RSA_MORSE,   L"RSA+МОРЗЕ"},
@@ -766,7 +773,10 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 {IDC_TAB_LISP_FORTH,  L"LISP+FORTH"},
                 {IDC_TAB_PROLOG_CBL,  L"PROLOG+CBL"},
                 {IDC_TAB_SYSTEMS,     L"RS/ZIG/HS"},
-                {IDC_TAB_IR,          L"AST / IR"},
+                {IDC_TAB_SCRIPTING,   L"RB/JL/DART"},
+                {IDC_TAB_TOKENS_AST,  L"SCR / AST"},
+                {IDC_TAB_IR,          L"IR КОД"},
+                {IDC_TAB_LISP_C99,    L"LISP+C99"},
                 {IDC_TAB_BRAINFUCK,   L"BRAINFUCK"},
                 {IDC_TAB_SUBLEQ,      L"SUBLEQ"},
                 {IDC_TAB_ASM_NET_POW, L"SHA256/TCP"},
@@ -845,7 +855,7 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
         case WM_COMMAND: {
             int id = LOWORD(wParam);
-            if (id >= IDC_TAB_LOG && id <= IDC_TAB_ASM_NET_POW) {
+            if (id >= IDC_TAB_LOG && id <= IDC_TAB_TOKENS_AST) {
                 set_holyc_ide_mode(false);
             }
             switch (id) {
@@ -858,6 +868,7 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 case IDC_TAB_BEFUNGE:     c.active_tab = ActiveTab::BEFUNGE; c.tab_dirty = true; break;
                 case IDC_TAB_DFT_HUFF:    c.active_tab = ActiveTab::DFT_HUFF; c.tab_dirty = true; break;
                 case IDC_TAB_SUDOKU_LIFE: c.active_tab = ActiveTab::SUDOKU_LIFE; c.tab_dirty = true; break;
+                case IDC_TAB_APOCALYPSE:  c.active_tab = ActiveTab::APOCALYPSE; c.tab_dirty = true; break;
                 case IDC_TAB_ASTAR:       c.active_tab = ActiveTab::ASTAR; c.tab_dirty = true; break;
                 case IDC_TAB_ML_GA:       c.active_tab = ActiveTab::ML_GA; c.tab_dirty = true; break;
                 case IDC_TAB_RSA_MORSE:   c.active_tab = ActiveTab::RSA_MORSE; c.tab_dirty = true; break;
@@ -865,7 +876,10 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 case IDC_TAB_LISP_FORTH:  c.active_tab = ActiveTab::LISP_FORTH; c.tab_dirty = true; break;
                 case IDC_TAB_PROLOG_CBL:  c.active_tab = ActiveTab::PROLOG_CBL; c.tab_dirty = true; break;
                 case IDC_TAB_SYSTEMS:     c.active_tab = ActiveTab::SYSTEMS; c.tab_dirty = true; break;
+                case IDC_TAB_SCRIPTING:   c.active_tab = ActiveTab::SCRIPTING; c.tab_dirty = true; break;
+                case IDC_TAB_TOKENS_AST:  c.active_tab = ActiveTab::TOKENS_AST; c.tab_dirty = true; break;
                 case IDC_TAB_IR:          c.active_tab = ActiveTab::IR; c.tab_dirty = true; break;
+                case IDC_TAB_LISP_C99:    c.active_tab = ActiveTab::LISP_C99; c.tab_dirty = true; break;
                 case IDC_TAB_BRAINFUCK:   c.active_tab = ActiveTab::BRAINFUCK; c.tab_dirty = true; break;
                 case IDC_TAB_SUBLEQ:      c.active_tab = ActiveTab::SUBLEQ; c.tab_dirty = true; break;
                 case IDC_TAB_ASM_NET_POW: c.active_tab = ActiveTab::ASM_NET_POW; c.tab_dirty = true; break;
@@ -908,9 +922,9 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     }
                     break;
                 case IDC_BTN_RAYTRACE: {
-                    int next_mode = (static_cast<int>(c.render3d_mode) + 1) % 4;
+                    int next_mode = (static_cast<int>(c.render3d_mode) + 1) % 6;
                     c.render3d_mode = static_cast<govno::madness::Render3DMode>(next_mode);
-                    const wchar_t* lbls[] = { L"РЕЙТРЕЙСИНГ", L"ФРАКТАЛ", L"ТУННЕЛЬ", L"3D КУБ" };
+                    const wchar_t* lbls[] = { L"РЕЙТРЕЙСИНГ", L"ФРАКТАЛ", L"ТУННЕЛЬ", L"ВОЛНЫ PDE", L"ДНК 3D", L"3D КУБ" };
                     SetWindowTextW(c.action_buttons[4], lbls[next_mode]);
                     break;
                 }
@@ -925,7 +939,7 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 case IDC_BTN_DISCO:
                     c.disco_chaos_mode = !c.disco_chaos_mode;
                     if (!c.disco_chaos_mode) {
-                        SetWindowTextW(hwnd, L"GovnoOS Kernel Builder v6.0 [13 HOLYC AOT + 15 POLYGLOT VMs + 4D] — Hello world");
+                        SetWindowTextW(hwnd, L"GovnoOS Kernel Builder v7.0 [16 HOLYC + 21 POLYGLOT VMs + AES128/PDE/6D] — Hello world");
                     }
                     break;
                 case IDC_BTN_BSOD:
@@ -997,8 +1011,8 @@ int run_cursed_gui_app(HINSTANCE hInstance, int nCmdShow) {
 
     int screen_w = GetSystemMetrics(SM_CXSCREEN);
     int screen_h = GetSystemMetrics(SM_CYSCREEN);
-    int win_w = 1200;
-    int win_h = 860;
+    int win_w = 1260;
+    int win_h = 900;
     int pos_x = std::max(0, (screen_w - win_w) / 2);
     int pos_y = std::max(0, (screen_h - win_h) / 2);
 

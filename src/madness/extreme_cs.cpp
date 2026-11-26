@@ -478,8 +478,8 @@ HeavyGauntletResult run_extreme_compute_gauntlet(
     std::ostringstream rep;
     rep << "\r\n=== EXTREME COMPUTE GAUNTLET (" << (heavy_mode ? "OVERKILL REAL WORKLOAD" : "FAST VERIFY") << ") ===\r\n";
 
-    // 1. Dense Gaussian Elimination (380x380 or 64x64)
-    const size_t mat_n = heavy_mode ? 380 : 64;
+    // 1. Dense Gaussian Elimination (720x720 or 64x64)
+    const size_t mat_n = heavy_mode ? 720 : 64;
     std::vector<double> A(mat_n * mat_n, 0.0);
     std::vector<double> b(mat_n, 0.0);
     for (size_t i = 0; i < mat_n; ++i) {
@@ -536,8 +536,8 @@ HeavyGauntletResult run_extreme_compute_gauntlet(
            " (невязка=" + std::to_string(max_resid) + ")");
 
     // 2. O(N^2 * T) N-Body Gravitational Particle Simulation
-    const size_t nbodies = heavy_mode ? 720 : 96;
-    const size_t nsteps = heavy_mode ? 280 : 28;
+    const size_t nbodies = heavy_mode ? 1400 : 96;
+    const size_t nsteps = heavy_mode ? 450 : 28;
     std::vector<double> px(nbodies), py(nbodies), pz(nbodies), vx(nbodies, 0.0), vy(nbodies, 0.0), vz(nbodies, 0.0);
     for (size_t i = 0; i < nbodies; ++i) {
         double a = static_cast<double>(i) * 0.61803398875;
@@ -578,15 +578,15 @@ HeavyGauntletResult run_extreme_compute_gauntlet(
         }
     }
 
-    // 3. Combinatorics Batch: 13-Queens + Large Game of Life (192x192 x 600 gens)
-    int nq_n = heavy_mode ? 13 : 9;
+    // 3. Combinatorics Batch: 14-Queens (365,596 sols!) + Large Game of Life (256x256 x 750 gens)
+    int nq_n = heavy_mode ? 14 : 9;
     size_t nq_sols = 0;
     count_n_queens_general(nq_n, 0, 0, 0, 0, nq_sols);
     out.nqueens_solutions = nq_sols;
 
-    const int gw = heavy_mode ? 192 : 32;
-    const int gh = heavy_mode ? 192 : 32;
-    const int g_gens = heavy_mode ? 600 : 40;
+    const int gw = heavy_mode ? 256 : 32;
+    const int gh = heavy_mode ? 256 : 32;
+    const int g_gens = heavy_mode ? 750 : 40;
     std::vector<uint8_t> life_a(static_cast<size_t>(gw * gh), 0);
     std::vector<uint8_t> life_b(static_cast<size_t>(gw * gh), 0);
     for (int y = 0; y < gh; ++y) {
@@ -619,10 +619,10 @@ HeavyGauntletResult run_extreme_compute_gauntlet(
            " решений | GameOfLife " + std::to_string(gw) + "x" + std::to_string(gh) + " x" +
            std::to_string(g_gens) + " (живых=" + std::to_string(life_alive) + ")");
 
-    // 4. Deep Complex 1080p Mandelbrot Matrix Verification (1920x1080 x 360 iters)
-    const int mw = heavy_mode ? 1920 : 192;
-    const int mh = heavy_mode ? 1080 : 108;
-    const int m_iter = heavy_mode ? 360 : 48;
+    // 4. Deep Complex 4K UHD Mandelbrot Matrix Verification (3840x2160 x 600 iters)
+    const int mw = heavy_mode ? 3840 : 192;
+    const int mh = heavy_mode ? 2160 : 108;
+    const int m_iter = heavy_mode ? 600 : 48;
     uint64_t fractal_iter_sum = 0;
     for (int y = 0; y < mh; ++y) {
         if ((y & 31) == 0 && cancel_flag.load()) return out;

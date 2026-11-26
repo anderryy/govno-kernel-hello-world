@@ -84,8 +84,10 @@ struct CompilerArtifacts {
     std::string lisp_forth_dump;
     std::string prolog_cbl_f90_dump;
     std::string systems_lang_dump;
+    std::string scripting_lang_dump;
     std::string dft_huffman_dump;
     std::string sudoku_life_dump;
+    std::string apocalypse_dump;
     std::vector<uint8_t> gexe_bytecode;
 
     size_t kernel_modules_built = 0;
@@ -115,6 +117,8 @@ struct CompilerArtifacts {
     size_t polyglot_languages_count = 0;
     size_t polyglot_total_bytes = 0;
     size_t polyglot_total_steps = 0;
+    uint64_t aes_keys_tested = 0;
+    uint64_t rays_traced = 0;
 };
 
 struct PipelineSharedState {

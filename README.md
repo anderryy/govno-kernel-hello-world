@@ -1,50 +1,34 @@
-# GovnoOS Kernel Builder & Polyglot TempleOS Apocalypse v6.0
+# GovnoOS Kernel Builder & Polyglot TempleOS Apocalypse v7.0
 
-Максимально переусложнённый мультиязычный компиляторный стек, микроядро, набор CS-движков и Win32 GDI-демосцена для вывода 11 символов **`Hello world`**.
+Максимально переусложнённый мультиязычный компиляторный стек, микроядро, набор вычислительно-тяжёлых CS-движков и Win32 GDI-демосцена для вывода 11 символов **`Hello world`**.
 
 ## Архитектура конвейера
 
-Каждый запуск проходит полный сквозной путь от AOT-транспиляции HolyC и исполнения 15 языков до криптографии, DSP и виртуального процессора:
+1. **Build-Time HolyC AOT Bootstrapping (`holyc/*.HC` — 16 модулей)**
+   - На этапе сборки `holyc2cpp.exe` транспилирует **16 модулей HolyC** (`01`..`15` + `hello_temple.HC`) в C++20 и генерирует иконку `cursed.ico`: GDT/IDT/PML4, RSA/CRC32, DolDoc VGA/Брезенхэм, встроенные BF/SUBLEQ/RPN VM, оракул TempleOS, трассировщик лучей, SQL-сканер, Chess Minimax, Forth+Lisp, IPv4/TCP, SGD+DFT, EXT2 VFS+Adler32, AES `GF(2^8)`+ChaCha, матрицы 3×3/Walsh-Hadamard и планировщик RTOS.
+2. **21 Полиглот-исходник (`polyglot/*`) + Реальные C++ ВМ/Интерпретаторы (`src/polyglot/`)**
+   - Вшиты в бинарник через `--bundle-polyglot` и реально исполняются при каждом запуске:
+     - **x86-64 Assembly (`hello_x86_64.asm`)**, **Befunge-93 (`hello_2d.b93`)**, **Forth (`hello.fth`)**, **Common Lisp (`hello.lisp`)**, **Prolog (`hello.prolog`)**, **Brainfuck (`hello.bf`)**, **COBOL (`HELLO.cbl`)**, **Fortran 90 (`hello.f90`)**, **Haskell (`Hello.hs`)**, **Rust (`hello.rs`)**, **Zig (`hello.zig`)**, **Lua (`hello.lua`)**, **Python (`hello.py`)**, **SQL (`sacred.sql`)**, **GLSL (`plasma.frag`)**, **Tcl (`hello.tcl`)**, **Perl (`hello.pl`)**, **Ruby (`hello.rb`)**, **Julia (`hello.jl`)**, **PowerShell (`hello.ps1`)**, **Dart (`hello.dart`)**.
+3. **Тяжёлая вычислительная нагрузка ЦП (`src/madness/apocalypse_engines.cpp`, `extreme_cs.cpp`, `ml_genetics_crypto.cpp`)**
+   - **Сборка ядра**: CRC32-стресс на 24 модуля `.o` (по 3.2M итераций) + **Решето Эратосфена до 64 000 000**.
+   - **Криптоанализ**: **брутфорс ключа AES-128** (~6.8M полных 10-раундовых расшифровок в `GF(2^8)`) + **брутфорс 18 ключей 50-битного RSA** прямым перебором делителей + **майнинг 6 блоков SHA-256 PoW** (дерево Меркла из 1 024 транзакций, сложность 21 нулевой бит, ~12+ млн хэшей).
+   - **Машинное обучение и эволюция**: ансамбль **40 нейросетей (144 000 эпох Backprop/SGD)** + 24-островная эволюция по Дарвину (`POP = 896`).
+   - **Численные методы и физика**:
+     - Реакция-диффузия **Gray-Scott 2D PDE** (`256×256`, `3 400` шагов).
+     - Прямое и обратное 2D **JPEG DCT/IDCT** сжатие `2048×2048` (`65 536` блоков `8×8` с расчётом PSNR).
+     - Гравитационная задача `N-Body` (`1 400` тел × `450` шагов) + плотная СЛАУ `720×720` методом Гаусса.
+     - Имитация отжига для **256-городной задачи коммивояжёра (TSP, 1.6M перестановок)**, **64M Monte-Carlo $\pi$**, длинная арифметика **`5000!`** (`16 326` цифр).
+     - **Monte-Carlo Path Tracer GI** (`800×450`, `20 spp`, 3 отскока), **4K UHD** множество Мандельброта `3840×2160` (`600` итераций), **14 ферзей (`365 596` решений)**, **Game of Life `256×256×750`**, `DFT/IDFT`, **Huffman Tree** и **A\* лабиринт**.
+4. **8-этапный компилятор, SUBLEQ OISC и GovnoVirtualCPU (`src/compiler/`, `src/kernel/`)**
+   - `XML -> JSON -> GovnoSQL -> GovnoScript -> #DEFINE -> goto-лексер -> AST -> IR -> GovnoLisp -> C99 -> Brainfuck -> SUBLEQ -> GovnoASM + LD -> .gexe -> TCP/IP -> GovnoVFS -> VGA 0xB8000`.
+5. **Win32 GUI (24 вкладки), 6 режимов графики и 8-bit аудио (`src/gui/`, `src/madness/software_3d.cpp`)**
+   - 6 режимов холста: **3D Куб**, **CPU Raytracing зеркальной сферы**, **Фрактал Мандельброта**, **Плазменный Туннель**, **Волны интерференции PDE** и **ДНК 3D-спираль**.
 
-1. **Build-Time HolyC AOT Bootstrapping (`holyc/*.HC` — 13 модулей + `src/tools/holyc2cpp_bootstrap.cpp`)**
-   - Во время сборки `holyc2cpp.exe` транспилирует **13 модулей HolyC** (`01_temple_boot.HC`..`12_holy_ext2_vfs.HC` + `hello_temple.HC`) в C++20 и генерирует иконку `cursed.ico` для `rc.exe`.
-   - Покрывает GDT/IDT/PML4, RSA/CRC32/FNV1a, DolDoc VGA/Брезенхэм, встроенные BF/SUBLEQ/RPN-VM на HolyC, 64-словный оракул TempleOS, fixed-point трассировку лучей, SQL-сканер, Chess Minimax + перцептрон, Forth+Lisp на HolyC, RFC-1071 IPv4/TCP, SGD+DFT и EXT2 VFS + Adler32.
-2. **15 Полиглот-исходников (`polyglot/*`) + Реальные C++ Интерпретаторы/ВМ (`src/polyglot/`)**
-   - На этапе сборки `holyc2cpp --bundle-polyglot` вшивает в бинарник исходники 15 языков:
-     - **x86-64 Assembly (`hello_x86_64.asm`)** — эмулятор регистров (`rax..r15`), флагов `ZF/SF`, стека и Linux `sys_write`/`sys_exit`.
-     - **Befunge-93 (`hello_2d.b93`)** — 2D-интерпретатор сетки с движением IP во всех направлениях и стеком.
-     - **Forth (`hello.fth`)** — словарный компилятор (`: ... ;`), `VARIABLE`/`CONSTANT`, цикл `DO ... LOOP` и `EMIT`.
-     - **Common Lisp (`hello.lisp`)** — рекурсивный парсер S-выражений (`defun`, `let`, `if`, `list`, `code-char`).
-     - **Prolog (`hello.prolog`)** — SLD-резолюция с унификацией фактов, предикатами `is`/`>=`/`=<` и бэктрекингом.
-     - **Brainfuck (`hello.bf`)**, **COBOL (`HELLO.cbl`)**, **Fortran 90 (`hello.f90`)**, **Haskell (`Hello.hs`)**, **Rust (`hello.rs`)**, **Zig (`hello.zig`)**, **Lua (`hello.lua`)**, **Python (`hello.py`)**, **SQL (`sacred.sql`)**, **GLSL (`plasma.frag`)**.
-3. **Реальная многосекундная вычислительная нагрузка (без sleep-задержек) (`src/madness/extreme_cs.cpp`, `ml_genetics_crypto.cpp`, `kernel/bios_acpi.cpp`)**
-   - При сборке ядра вычисляются CRC32 по 24 модулям `.o` и **Решето Эратосфена до 32 000 000** простых чисел.
-   - **Ансамбль из 24 нейросетей (Backprop + SGD, 72 000 эпох)** и 16-островная **дарвинская эволюция** (`POP = 768`).
-   - **Брутфорс-факторизация 12 ключей 49-битного RSA** прямым перебором делителей без готового закрытого ключа.
-   - **Дискретное преобразование Фурье (`DFT -> IDFT`)**, **Бинарный кодек Хаффмана**, **Судоку 9×9 + 13 ферзей (`73 712` решений)**.
-   - **Плотная СЛАУ `380×380` методом Гаусса**, гравитационная **симуляция `N-Body` (`720` тел × `280` шагов)**, **Game of Life (`192×192 × 600`)**, роутинг **Флойда–Уоршелла**, **A\* лабиринт `25×11`** и Full HD расчёт **Мандельброта `1920×1080` (`360` итераций)**.
-4. **Runtime HolyC VM, 8-этапный компилятор и SUBLEQ OISC (`src/holyc/`, `src/compiler/`, `src/madness/subleq_oisc.cpp`)**
-   - `XML -> JSON -> GovnoSQL -> GovnoScript -> #DEFINE -> goto-лексер -> AST -> IR -> GovnoLisp -> C99 -> Brainfuck -> SUBLEQ OISC -> GovnoASM + LD -> .gexe`.
-5. **Многоблочный FIPS-180-4 SHA-256 PoW, TCP/IP и GovnoVirtualCPU (`src/kernel/vfs_network.cpp`, `src/kernel/govno_kernel.cpp`)**
-   - Дерево Меркла из `1 024` транзакций и реальный **майнинг 6 блоков SHA-256 Proof-of-Work** сложности `20` нулевых бит (~6+ млн реальных хэшей SHA-256), фрагментация `.gexe` в кадры Ethernet/IPv4/TCP/HTTP, проверка CRC32 в `GovnoVFS` и потактовое исполнение на виртуальном CPU (`INT 0x80 -> VGA 0xB8000`).
-6. **Win32 GUI (20 вкладок), 4 режима графики и 8-bit аудио (`src/gui/cursed_gui.cpp`, `src/madness/software_3d.cpp`)**
-   - Переключаемые режимы холста: **3D Куб**, **CPU Raytracing зеркальной сферы с тенями**, **Фрактал Мандельброта (Seahorse Valley zoom)** и **Демосцена Плазменный Туннель**, плюс кнопки `[ХАРД-ПРОГОН]` и `[ЛАЙТ-РЕЖИМ]`, редактор `HOLYC IDE`, 16-цветный TempleOS VGA, рой окон и аудиосинтезатор `56k` / chiptune.
-
-## Сборка (Windows / MSVC 2022)
+## Сборка и запуск (Windows / MSVC 2022)
 
 ```bat
 build.bat
 ```
 
-Или через CMake:
-
-```powershell
-cmake -B out -G "Visual Studio 17 2022" -A x64
-cmake --build out --config Release
-```
-
-## Запуск
-
-- Готовый бинарник `GovnoKernelHelloWorld.exe` находится в разделе **Releases**.
-- Обычный GUI-режим: `GovnoKernelHelloWorld.exe`
-- Консольная диагностика: `GovnoKernelHelloWorld.exe --self-test`
+- Обычный GUI-режим: `GovnoKernelHelloWorld.exe` (кнопки `[ХАРД-ПРОГОН]` и `[ЛАЙТ-РЕЖИМ]`)
+- Консольная проверка: `GovnoKernelHelloWorld.exe --self-test` (быстрая проверка) и `GovnoKernelHelloWorld.exe --self-test --heavy` (полная нагрузка)

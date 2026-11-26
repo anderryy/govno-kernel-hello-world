@@ -326,6 +326,12 @@ std::string detect_polyglot_language(const std::string& filename) {
     if (ext == ".py") return "Python";
     if (ext == ".sql") return "SQL";
     if (ext == ".frag") return "GLSL";
+    if (ext == ".tcl") return "Tcl";
+    if (ext == ".pl") return "Perl";
+    if (ext == ".rb") return "Ruby";
+    if (ext == ".jl") return "Julia";
+    if (ext == ".ps1") return "PowerShell";
+    if (ext == ".dart") return "Dart";
     return "Unknown";
 }
 

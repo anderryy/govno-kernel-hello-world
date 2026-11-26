@@ -10,7 +10,9 @@ enum class Render3DMode {
     SPINNING_CUBE = 0,
     RAYTRACED_SPHERE = 1,
     MANDELBROT_ZOOM = 2,
-    PLASMA_TUNNEL = 3
+    PLASMA_TUNNEL = 3,
+    GRAY_SCOTT_ORBIT = 4,
+    DNA_DOUBLE_HELIX = 5
 };
 
 class Software3DRenderer {
@@ -24,6 +26,8 @@ class Software3DRenderer {
     void render_raytracer_mode(uint64_t tick, bool disco_chaos);
     void render_mandelbrot_mode(uint64_t tick, bool disco_chaos);
     void render_plasma_tunnel_mode(uint64_t tick, bool disco_chaos);
+    void render_interference_orbit_mode(uint64_t tick, bool disco_chaos);
+    void render_dna_helix_mode(uint64_t tick, bool disco_chaos);
     void render_loss_graph(const std::vector<float>& loss_hist);
 
 public:
