@@ -307,11 +307,98 @@ void write_cursed_ico(const std::string& path) {
     f.write(reinterpret_cast<const char*>(ico.data()), static_cast<std::streamsize>(ico.size()));
 }
 
+std::string detect_polyglot_language(const std::string& filename) {
+    auto dot = filename.rfind('.');
+    std::string ext = (dot != std::string::npos) ? filename.substr(dot) : "";
+    for (char& c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    if (ext == ".asm") return "Assembly";
+    if (ext == ".b93") return "Befunge-93";
+    if (ext == ".fth") return "Forth";
+    if (ext == ".lisp") return "Common Lisp";
+    if (ext == ".prolog" || ext == ".pro") return "Prolog";
+    if (ext == ".bf") return "Brainfuck";
+    if (ext == ".cbl") return "COBOL";
+    if (ext == ".f90") return "Fortran";
+    if (ext == ".hs") return "Haskell";
+    if (ext == ".rs") return "Rust";
+    if (ext == ".zig") return "Zig";
+    if (ext == ".lua") return "Lua";
+    if (ext == ".py") return "Python";
+    if (ext == ".sql") return "SQL";
+    if (ext == ".frag") return "GLSL";
+    return "Unknown";
+}
+
+int bundle_polyglot_files(const std::string& out_hpp, int argc, char** argv, int start_idx) {
+    std::ostringstream hpp;
+    hpp << "// AUTO-GENERATED POLYGLOT ASSET BUNDLE BY holyc2cpp_bootstrap\n"
+        << "#pragma once\n"
+        << "#include <cstddef>\n"
+        << "#include <vector>\n\n"
+        << "namespace govno::polyglot_bundle {\n\n"
+        << "struct PolyglotAsset {\n"
+        << "    const char* filename;\n"
+        << "    const char* language;\n"
+        << "    const char* source;\n"
+        << "    size_t byte_size;\n"
+        << "};\n\n"
+        << "inline const std::vector<PolyglotAsset>& get_bundled_assets() {\n"
+        << "    static const std::vector<PolyglotAsset> kAssets = {\n";
+
+    size_t total_poly_bytes = 0;
+    for (int i = start_idx; i < argc; ++i) {
+        std::string path = argv[i];
+        std::ifstream in(path, std::ios::binary);
+        if (!in) {
+            std::cerr << "Failed to open polyglot file: " << path << "\n";
+            return 4;
+        }
+        std::ostringstream ss;
+        ss << in.rdbuf();
+        std::string raw = ss.str();
+        std::string normalized;
+        normalized.reserve(raw.size());
+        for (char c : raw) {
+            if (c != '\r') normalized.push_back(c);
+        }
+        total_poly_bytes += normalized.size();
+        auto slash = path.find_last_of("\\/");
+        std::string base = (slash != std::string::npos) ? path.substr(slash + 1) : path;
+        std::string lang = detect_polyglot_language(base);
+        hpp << "        {\n"
+            << "            \"" << base << "\",\n"
+            << "            \"" << lang << "\",\n"
+            << "            R\"GOVNO_POLY(" << normalized << ")GOVNO_POLY\",\n"
+            << "            " << normalized.size() << "\n"
+            << "        },\n";
+    }
+
+    hpp << "    };\n"
+        << "    return kAssets;\n"
+        << "}\n\n"
+        << "} // namespace govno::polyglot_bundle\n";
+
+    std::ofstream out(out_hpp, std::ios::binary);
+    if (!out) {
+        std::cerr << "Failed to write polyglot bundle header: " << out_hpp << "\n";
+        return 5;
+    }
+    out << hpp.str();
+    std::cout << "[HOLYC2CPP-BUNDLE] Bundled " << (argc - start_idx)
+              << " polyglot files (" << total_poly_bytes << " bytes) -> " << out_hpp << "\n";
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
+    if (argc >= 4 && std::string(argv[1]) == "--bundle-polyglot") {
+        return bundle_polyglot_files(argv[2], argc, argv, 3);
+    }
+
     if (argc < 4) {
-        std::cerr << "Usage: holyc2cpp <output.cpp> <output.ico> <in1.HC> [in2.HC ...]\n";
+        std::cerr << "Usage: holyc2cpp <output.cpp> <output.ico> <in1.HC> [in2.HC ...]\n"
+                  << "   or: holyc2cpp --bundle-polyglot <out.hpp> <poly1> [poly2 ...]\n";
         return 1;
     }
 

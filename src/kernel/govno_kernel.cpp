@@ -6,6 +6,8 @@
 #include "holyc_aot_bridge.hpp"
 #include "madness/ml_genetics_crypto.hpp"
 #include "madness/maze_astar.hpp"
+#include "madness/extreme_cs.hpp"
+#include "polyglot/polyglot_engines.hpp"
 #include "cursed_macros.hpp"
 
 #include <chrono>
@@ -355,7 +357,27 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
     append_kernel_log("[A*-LABYRINTH] Строка сбежала из лабиринта 25x11 за " +
                       std::to_string(maze.path_length) + " шагов (раскрыто узлов: " +
                       std::to_string(maze.nodes_expanded) + ")");
-    sleep_step(110);
+    sleep_step(80);
+
+    // 6C. Execute all 15 bundled polyglot languages (ASM, Befunge-93, Forth, Lisp, Prolog, BF, COBOL, F90, HS, Rust, Zig, Lua, Py, SQL, GLSL)
+    {
+        std::lock_guard<std::mutex> lock(g_state().mtx);
+        g_state().status_banner = "Запуск 15 полиглот-движков (x86-64, Befunge-93, Forth, Lisp, Prolog, COBOL, Rust, Zig...)";
+    }
+    auto poly = govno::polyglot::run_all_polyglot_engines(maze.delivered_payload);
+    append_kernel_log("[POLYGLOT-15] Исполнено " + std::to_string(poly.results.size()) +
+                      " языков (" + std::to_string(poly.total_polyglot_bytes) + " Б, " +
+                      std::to_string(poly.total_steps) + " шагов VM) -> \"" + poly.final_payload + "\"");
+
+    // 6D. Extreme CS codecs & solvers: DFT -> Huffman -> Sudoku+8Queens -> Game of Life + Floyd-Warshall
+    auto dft = govno::madness::dft_idft_roundtrip(poly.final_payload);
+    auto huff = govno::madness::huffman_compress_decompress(dft.ok ? dft.output : "DFT_FAIL");
+    auto sud = govno::madness::solve_sudoku_and_nqueens(huff.ok ? huff.output : "HUFF_FAIL");
+    auto life = govno::madness::game_of_life_and_graph(sud.ok ? sud.output : "SUD_FAIL");
+    std::string cs_verified_out = life.ok ? life.output : "LIFE_FAIL";
+    append_kernel_log("[DSP/ALGO] DFT+IDFT -> Huffman Tree -> Sudoku+8Queens(92) -> GameOfLife(40gen)+FloydWarshall -> \"" +
+                      cs_verified_out + "\"");
+    sleep_step(80);
 
     {
         std::lock_guard<std::mutex> lock(g_state().mtx);
@@ -363,7 +385,7 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
         g_state().cpu.holyc_cycles = hc.vm_cycles;
     }
 
-    // 7. 8-Stage Multi-Language Compiler taking A*-escaped payload!
+    // 7. 8-Stage Multi-Language Compiler taking post-polyglot & CS-verified payload!
     {
         std::lock_guard<std::mutex> lock(g_state().mtx);
         g_state().stage = PipelineStage::STAGE_8_XML_JSON_SQL;
@@ -374,7 +396,7 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
     compiled.ml_genetics_dump = nn.report + ga.report;
     compiled.rsa_lz77_morse_dump = rsa.report + morse.report;
     compiled.holyc_aot_dump =
-        "=== BUILD-TIME HOLYC AOT (from holyc/hello_temple.HC) ===\r\n" +
+        "=== BUILD-TIME HOLYC AOT (from 13 modules holyc/*.HC) ===\r\n" +
         holyc_aot.aot_log + "\r\nEmitted AOT String: \"" + holyc_aot.emitted_text + "\"\r\n" +
         "HOLY_SHIFT (2`3) = " + std::to_string(holyc_aot.magic_power) + "\r\n\r\n" +
         "=== TRANSPILED C++ GENERATED AT BUILD TIME ===\r\n" +
@@ -382,6 +404,17 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
     compiled.holyc_source_dump = hc.raw_and_expanded_source;
     compiled.holyc_vm_dump = hc.vm_and_doldoc_report;
     compiled.astar_maze_dump = maze.ascii_map_dump;
+    compiled.polyglot_summary_dump = poly.combined_summary;
+    compiled.x86_asm_dump = poly.x86_trace;
+    compiled.befunge_2d_dump = poly.befunge_trace;
+    compiled.lisp_forth_dump = poly.lisp_forth_trace;
+    compiled.prolog_cbl_f90_dump = poly.prolog_cbl_f90_trace;
+    compiled.systems_lang_dump = poly.systems_lang_trace;
+    compiled.dft_huffman_dump = dft.dump + "\r\n" + huff.dump;
+    compiled.sudoku_life_dump = sud.dump + "\r\n" + life.dump;
+    compiled.polyglot_languages_count = poly.results.size();
+    compiled.polyglot_total_bytes = poly.total_polyglot_bytes;
+    compiled.polyglot_total_steps = poly.total_steps;
     compiled.astar_nodes_expanded = maze.nodes_expanded;
     compiled.holyc_aot_shift = holyc_aot.magic_power;
     compiled.holyc_opcodes_count = hc.opcodes_count;
@@ -394,7 +427,7 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
     compiled.rsa_modulus = rsa.modulus_n;
 
     bool ok = govno::compiler::run_full_compiler_pipeline(
-        maze.delivered_payload,
+        cs_verified_out,
         compiled,
         [&](int pct, const std::string& msg) {
             append_kernel_log(msg);
@@ -531,7 +564,7 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
         g_state().driver_net_progress = 100;
         g_state().completed = !cancel_flag.load();
         g_state().stage = PipelineStage::STAGE_15_GRAND_FINALE_HELLO_WORLD;
-        g_state().status_banner = "ТРИУМФ! 'Hello world' ВЫВЕДЕН ЧЕРЕЗ HOLYC AOT, ИИ, RSA, МОРЗЕ, A*, SUBLEQ И РЕЙТРЕЙСИНГ!";
+        g_state().status_banner = "ТРИУМФ v6.0! 'Hello world' ПРОВЕРЕН ЧЕРЕЗ 13 HOLYC + 15 ЯЗЫКОВ + SHA-256 + DFT + ХАФФМАН + СУДОКУ + LIFE + 3D!";
         final_str = g_state().final_vga_output;
     }
 

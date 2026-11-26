@@ -1,5 +1,6 @@
 #include "kernel/vfs_network.hpp"
 #include "compiler/govno_compiler.hpp"
+#include "madness/extreme_cs.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -9,20 +10,6 @@
 namespace govno::kernel {
 
 namespace {
-
-uint64_t cursed_pow_hash(const uint8_t* data, size_t len, uint64_t nonce) {
-    uint64_t h = 0xCBF29CE484222325ULL ^ (nonce * 0x9E3779B97F4A7C15ULL);
-    for (size_t i = 0; i < len; ++i) {
-        h ^= data[i];
-        h *= 0x100000001B3ULL;
-    }
-    h ^= h >> 33;
-    h *= 0xFF51AFD7ED558CCDULL;
-    h ^= h >> 33;
-    h *= 0xC4CEB9FE1A85EC53ULL;
-    h ^= h >> 33;
-    return h;
-}
 
 uint16_t ipv4_header_checksum(const uint8_t* hdr20) {
     uint32_t sum = 0;
@@ -115,13 +102,19 @@ BlockchainMiningResult mine_hello_world_blockchain_block(
 ) {
     BlockchainMiningResult res;
     uint64_t nonce = 0;
-    uint64_t h = 0;
+    std::array<uint8_t, 32> digest{};
+    std::vector<uint8_t> block_buf(gexe_payload.begin(), gexe_payload.end());
+    block_buf.resize(gexe_payload.size() + 8);
 
-    // Require 12 leading zero bits (hash & 0xFFF0000000000000ULL == 0) -> ~4096 hashes on avg
+    // Real FIPS-180-4 SHA-256 Proof-of-Work: require 12 leading zero bits (digest[0]==0 && (digest[1]&0xF0)==0)
     while (true) {
-        h = cursed_pow_hash(gexe_payload.data(), gexe_payload.size(), nonce);
+        for (int b = 0; b < 8; ++b) {
+            block_buf[gexe_payload.size() + static_cast<size_t>(b)] =
+                static_cast<uint8_t>((nonce >> (b * 8)) & 0xFFULL);
+        }
+        digest = govno::madness::sha256_bytes(block_buf.data(), block_buf.size());
         ++res.hashes_computed;
-        if ((h & 0xFFF0000000000000ULL) == 0ULL) {
+        if (digest[0] == 0x00 && (digest[1] & 0xF0) == 0x00) {
             break;
         }
         ++nonce;
@@ -129,21 +122,24 @@ BlockchainMiningResult mine_hello_world_blockchain_block(
 
     res.nonce = nonce;
     std::ostringstream hs;
-    hs << "0x" << std::hex << std::setw(16) << std::setfill('0') << h;
+    hs << "0x" << std::hex << std::setfill('0');
+    for (uint8_t byte : digest) {
+        hs << std::setw(2) << static_cast<unsigned>(byte);
+    }
     res.block_hash_hex = hs.str();
 
     std::ostringstream ld;
-    ld << "; === GOVNO-CHAIN PROOF-OF-WORK NOTARIZATION ===\r\n"
-       << "Block #1337 | Difficulty: 0xFFF0000000000000 (3 hex zeroes)\r\n"
-       << "PrevHash: 0x000deadbeef00000\r\n"
-       << "Nonce   : " << res.nonce << " (checked " << res.hashes_computed << " hashes)\r\n"
-       << "BlockHsh: " << res.block_hash_hex << "\r\n"
+    ld << "; === GOVNO-CHAIN FIPS-180-4 SHA-256 PROOF-OF-WORK NOTARIZATION ===\r\n"
+       << "Block #1337 | Difficulty: 0x000FFFFFFFFFFFFF (12 leading zero bits)\r\n"
+       << "PrevHash: 0x000000000000deadbeef00000000000000000000000000000000000000000000\r\n"
+       << "Nonce   : " << res.nonce << " (computed " << res.hashes_computed << " SHA-256 blocks)\r\n"
+       << "SHA-256 : " << res.block_hash_hex << "\r\n"
        << "Payload : /bin/hello_world.gexe (" << gexe_payload.size() << " bytes)\r\n"
-       << "Status  : CONFIRMED BY 1 IMAGINARY VALIDATOR (GAS FEE: 420 GOVNOCOIN)\r\n";
+       << "Status  : CONFIRMED ON GOVNO-MAINNET (GAS FEE: 420 GOVNOCOIN)\r\n";
     res.ledger_dump = ld.str();
 
-    log_cb("[BLOCKCHAIN-POW] Намайнен блок #1337 (nonce=" + std::to_string(res.nonce) +
-           ", hash=" + res.block_hash_hex + ", переборов=" + std::to_string(res.hashes_computed) + ")");
+    log_cb("[SHA256-POW] Намайнен блок #1337 (nonce=" + std::to_string(res.nonce) +
+           ", sha256=" + res.block_hash_hex.substr(0, 22) + "..., хешей=" + std::to_string(res.hashes_computed) + ")");
     return res;
 }
 

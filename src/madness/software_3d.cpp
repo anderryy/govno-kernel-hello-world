@@ -236,6 +236,63 @@ void Software3DRenderer::render_raytracer_mode(uint64_t tick, bool disco_chaos) 
     }
 }
 
+void Software3DRenderer::render_mandelbrot_mode(uint64_t tick, bool disco_chaos) {
+    double t = static_cast<double>(tick) * (disco_chaos ? 0.08 : 0.035);
+    double zoom = std::pow(1.032, std::fmod(t * 22.0, 140.0));
+    double scale = 2.6 / zoom;
+    double cx_center = -0.743643887037151;
+    double cy_center = 0.131825904205330;
+    constexpr int MAX_ITER = 44;
+
+    for (int y = 0; y < height_; ++y) {
+        double ci = cy_center + (static_cast<double>(y) / height_ - 0.5) * scale * 0.56;
+        for (int x = 0; x < width_; ++x) {
+            double cr = cx_center + (static_cast<double>(x) / width_ - 0.5) * scale;
+            double zr = 0.0, zi = 0.0;
+            int iter = 0;
+            while (zr * zr + zi * zi <= 4.0 && iter < MAX_ITER) {
+                double nr = zr * zr - zi * zi + cr;
+                zi = 2.0 * zr * zi + ci;
+                zr = nr;
+                ++iter;
+            }
+            if (iter == MAX_ITER) {
+                fb_[static_cast<size_t>(y * width_ + x)] = 0x050510;
+            } else {
+                int hue = static_cast<int>(iter * 16 + tick * (disco_chaos ? 11 : 4));
+                fb_[static_cast<size_t>(y * width_ + x)] = hsv_argb(hue);
+            }
+        }
+    }
+}
+
+void Software3DRenderer::render_plasma_tunnel_mode(uint64_t tick, bool disco_chaos) {
+    float t = static_cast<float>(tick) * (disco_chaos ? 0.14f : 0.06f);
+    float cx = width_ * 0.5f + std::sin(t * 0.9f) * 32.0f;
+    float cy = height_ * 0.5f + std::cos(t * 0.7f) * 20.0f;
+
+    for (int y = 0; y < height_; ++y) {
+        float dy = static_cast<float>(y) - cy;
+        for (int x = 0; x < width_; ++x) {
+            float dx = static_cast<float>(x) - cx;
+            float dist = std::sqrt(dx * dx + dy * dy) + 1.0f;
+            float angle = std::atan2(dy, dx);
+            float u = (angle / 3.1415926f) * 4.0f + t * 0.45f;
+            float v = (95.0f / dist) + t * 2.2f;
+            int iu = static_cast<int>(u * 32.0f);
+            int iv = static_cast<int>(v * 32.0f);
+            int pattern = (iu ^ iv) & 63;
+            float fog = std::clamp(dist / 130.0f, 0.12f, 1.0f);
+            int hue = static_cast<int>(pattern * 5 + tick * 6);
+            uint32_t c = hsv_argb(hue);
+            int r = static_cast<int>(((c >> 16) & 0xFF) * fog);
+            int g = static_cast<int>(((c >> 8) & 0xFF) * fog);
+            int b = static_cast<int>((c & 0xFF) * fog);
+            fb_[static_cast<size_t>(y * width_ + x)] = make_rgb(r, g, b);
+        }
+    }
+}
+
 void Software3DRenderer::render_loss_graph(const std::vector<float>& loss_hist) {
     if (loss_hist.empty()) return;
     int gx = 8, gy = height_ - 72, gw = 118, gh = 64;
@@ -265,6 +322,10 @@ void Software3DRenderer::render_demoscene_frame(
 ) {
     if (mode == Render3DMode::RAYTRACED_SPHERE) {
         render_raytracer_mode(tick, disco_chaos);
+    } else if (mode == Render3DMode::MANDELBROT_ZOOM) {
+        render_mandelbrot_mode(tick, disco_chaos);
+    } else if (mode == Render3DMode::PLASMA_TUNNEL) {
+        render_plasma_tunnel_mode(tick, disco_chaos);
     } else {
         render_cube_mode(tick, completed, disco_chaos);
     }

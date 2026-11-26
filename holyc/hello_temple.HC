@@ -1,6 +1,6 @@
 $FG,LTGREEN$// ============================================================================
-//  hello_temple.HC — Master TempleOS HolyC Kernel Orchestrator
-//  Links & executes all 8 HolyC modules AOT into GovnoKernelHelloWorld.exe!
+//  hello_temple.HC — Master TempleOS HolyC Kernel Orchestrator (13 Modules!)
+//  Links & executes all 13 HolyC modules AOT into GovnoKernelHelloWorld.exe!
 // ============================================================================$FG$
 
 Class CHolyConfig {
@@ -16,6 +16,10 @@ Class CHolyConfig {
   I64 rt_phys_sig;
   I64 sql_sort_sig;
   I64 game_ai_sig;
+  I64 forth_lisp_sig;
+  I64 net_sig;
+  I64 nn_dft_sig;
+  I64 vfs_sig;
   U8  blessed;
 };
 
@@ -38,7 +42,7 @@ Class CHolyConfig {
 }
 
 U0 BlessRingZero() {
-  "$FG,YELLOW$[HolyC AOT] Executing All 8 Compiled TempleOS HolyC Modules!$FG$\n";
+  "$FG,YELLOW$[HolyC AOT] Executing All 13 Compiled TempleOS HolyC Modules!$FG$\n";
 }
 
 I64 ValidatePrintableAscii(I64 ch) {
@@ -63,20 +67,24 @@ U0 Main() {
   cfg.ring_level = 0;
   cfg.blessed = 1;
 
-  // Parenthesis-free 0-arg HolyC calls & full 8-module execution!
+  // Parenthesis-free 0-arg HolyC calls & full 13-module execution!
   BlessRingZero;
-  cfg.boot_sig     = TempleBootEntry();
-  cfg.crypto_sig   = HolyCryptoSelfTest();
-  cfg.gfx_sig      = HolyGfxVerify();
-  cfg.bf_sig       = ExecuteHolyBrainfuckHello();
-  cfg.subleq_sig   = ExecuteHolySubleqMini();
-  cfg.rpn_sig      = ExecuteHolyRpnVm();
-  cfg.oracle_sig   = HolyGodOracleRun();
-  cfg.rt_phys_sig  = HolyRaytracerAndPhysicsVerify();
-  cfg.sql_sort_sig = HolyCompilerSqlSortVerify();
-  cfg.game_ai_sig  = HolyGameAiAndGridVerify();
+  cfg.boot_sig       = TempleBootEntry();
+  cfg.crypto_sig     = HolyCryptoSelfTest();
+  cfg.gfx_sig        = HolyGfxVerify();
+  cfg.bf_sig         = ExecuteHolyBrainfuckHello();
+  cfg.subleq_sig     = ExecuteHolySubleqMini();
+  cfg.rpn_sig        = ExecuteHolyRpnVm();
+  cfg.oracle_sig     = HolyGodOracleRun();
+  cfg.rt_phys_sig    = HolyRaytracerAndPhysicsVerify();
+  cfg.sql_sort_sig   = HolyCompilerSqlSortVerify();
+  cfg.game_ai_sig    = HolyGameAiAndGridVerify();
+  cfg.forth_lisp_sig = HolyForthAndLispVerify();
+  cfg.net_sig        = HolyNetStackVerify();
+  cfg.nn_dft_sig     = HolyNeuralAndDftVerify();
+  cfg.vfs_sig        = HolyVfsAndHuffmanVerify();
 
-  if (cfg.boot_sig > 0 && cfg.crypto_sig > 0 && cfg.bf_sig > 0 && cfg.game_ai_sig != -999999) {
+  if (cfg.boot_sig > 0 && cfg.crypto_sig > 0 && cfg.bf_sig > 0 && cfg.vfs_sig > 0) {
     EmitAotHello;
   }
 }

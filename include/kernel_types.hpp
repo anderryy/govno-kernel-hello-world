@@ -78,6 +78,14 @@ struct CompilerArtifacts {
     std::string govnoasm_and_linker_dump;
     std::string tcp_packets_dump;
     std::string gexe_and_blockchain_dump;
+    std::string polyglot_summary_dump;
+    std::string x86_asm_dump;
+    std::string befunge_2d_dump;
+    std::string lisp_forth_dump;
+    std::string prolog_cbl_f90_dump;
+    std::string systems_lang_dump;
+    std::string dft_huffman_dump;
+    std::string sudoku_life_dump;
     std::vector<uint8_t> gexe_bytecode;
 
     size_t kernel_modules_built = 0;
@@ -103,6 +111,10 @@ struct CompilerArtifacts {
     size_t tcp_packet_count = 0;
     uint64_t pow_nonce = 0;
     std::string pow_block_hash;
+
+    size_t polyglot_languages_count = 0;
+    size_t polyglot_total_bytes = 0;
+    size_t polyglot_total_steps = 0;
 };
 
 struct PipelineSharedState {

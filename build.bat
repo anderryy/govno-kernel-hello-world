@@ -3,7 +3,7 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 echo =======================================================================
-echo   GOVNO KERNEL ENTERPRISE BUILD SYSTEM v5.0 (HOLYC AOT + RAYTRACER)
+echo   GOVNO KERNEL ENTERPRISE BUILD SYSTEM v6.0 (13 HOLYC + 15 POLYGLOT VMs)
 echo =======================================================================
 
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -36,14 +36,14 @@ if errorlevel 1 (
 
 if not exist build mkdir build
 
-echo [STAGE 1/4] Building HolyC-to-C++ AOT Bootstrap Compiler (holyc2cpp.exe)...
+echo [STAGE 1/5] Building HolyC AOT Compiler and Polyglot Bundler (holyc2cpp.exe)...
 cl /nologo /std:c++20 /utf-8 /EHsc /O2 /Fo:build\ /Fe:build\holyc2cpp.exe src\tools\holyc2cpp_bootstrap.cpp
 if errorlevel 1 (
     echo [FATAL] Failed to compile holyc2cpp bootstrap compiler!
     exit /b 1
 )
 
-echo [STAGE 2/4] Compiling 9 HolyC modules (holyc\*.HC) into C++20 and generating cursed.ico...
+echo [STAGE 2/5] Compiling 13 HolyC modules (holyc\*.HC) into C++20 and generating cursed.ico...
 build\holyc2cpp.exe build\generated_from_holyc.cpp build\cursed.ico ^
     holyc\01_temple_boot.HC ^
     holyc\02_holy_math_crypto.HC ^
@@ -53,23 +53,49 @@ build\holyc2cpp.exe build\generated_from_holyc.cpp build\cursed.ico ^
     holyc\06_holy_raytracer_physics.HC ^
     holyc\07_holy_compiler_sql_sort.HC ^
     holyc\08_holy_chess_minimax_ai.HC ^
+    holyc\09_holy_forth_lisp.HC ^
+    holyc\10_holy_network_tcp.HC ^
+    holyc\11_holy_neural_net.HC ^
+    holyc\12_holy_ext2_vfs.HC ^
     holyc\hello_temple.HC
 if errorlevel 1 (
     echo [FATAL] HolyC AOT compilation failed!
     exit /b 1
 )
 
-echo [STAGE 3/4] Compiling cursed Windows Icon and VersionInfo resource (govno.res)...
+echo [STAGE 3/5] Bundling 15 Polyglot language sources (polyglot\*) into generated_polyglot_bundle.hpp...
+build\holyc2cpp.exe --bundle-polyglot build\generated_polyglot_bundle.hpp ^
+    polyglot\hello_x86_64.asm ^
+    polyglot\hello_2d.b93 ^
+    polyglot\hello.fth ^
+    polyglot\hello.lisp ^
+    polyglot\hello.prolog ^
+    polyglot\hello.bf ^
+    polyglot\HELLO.cbl ^
+    polyglot\hello.f90 ^
+    polyglot\Hello.hs ^
+    polyglot\hello.rs ^
+    polyglot\hello.zig ^
+    polyglot\hello.lua ^
+    polyglot\hello.py ^
+    polyglot\sacred.sql ^
+    polyglot\plasma.frag
+if errorlevel 1 (
+    echo [FATAL] Polyglot bundle generation failed!
+    exit /b 1
+)
+
+echo [STAGE 4/5] Compiling cursed Windows Icon and VersionInfo resource (govno.res)...
 rc /nologo /Ibuild /fo build\govno.res res\govno.rc
 if errorlevel 1 (
     echo [FATAL] Resource compilation failed!
     exit /b 1
 )
 
-echo [STAGE 4/4] Compiling 13 C++20 modules + HolyC AOT output into GovnoKernelHelloWorld.exe...
+echo [STAGE 5/5] Compiling 16 C++20 modules + HolyC AOT + Polyglot VMs into GovnoKernelHelloWorld.exe...
 cl /nologo /std:c++20 /utf-8 /EHsc /O2 ^
     /DUNICODE /D_UNICODE /DNOMINMAX /DWIN32_LEAN_AND_MEAN ^
-    /Iinclude /Isrc ^
+    /Iinclude /Isrc /Ibuild ^
     /Fo:build\ ^
     /Fe:GovnoKernelHelloWorld.exe ^
     src\main.cpp ^
@@ -83,6 +109,9 @@ cl /nologo /std:c++20 /utf-8 /EHsc /O2 ^
     src\madness\maze_astar.cpp ^
     src\madness\chiptune_synth.cpp ^
     src\madness\software_3d.cpp ^
+    src\madness\extreme_cs.cpp ^
+    src\polyglot\polyglot_engines_part1.cpp ^
+    src\polyglot\polyglot_engines_part2.cpp ^
     src\gui\cursed_gui.cpp ^
     build\generated_from_holyc.cpp ^
     build\govno.res ^
@@ -95,5 +124,5 @@ if errorlevel 1 (
 )
 
 echo.
-echo [SUCCESS] Built GovnoKernelHelloWorld.exe v5.0 (HolyC AOT + Raytracer + A*)!
+echo [SUCCESS] Built GovnoKernelHelloWorld.exe v6.0 (13x HolyC AOT + 15 Polyglot VMs + SHA256 + 4D GFX)!
 endlocal

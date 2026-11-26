@@ -8,7 +8,9 @@ namespace govno::madness {
 
 enum class Render3DMode {
     SPINNING_CUBE = 0,
-    RAYTRACED_SPHERE = 1
+    RAYTRACED_SPHERE = 1,
+    MANDELBROT_ZOOM = 2,
+    PLASMA_TUNNEL = 3
 };
 
 class Software3DRenderer {
@@ -20,6 +22,8 @@ class Software3DRenderer {
     void fill_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint32_t col);
     void render_cube_mode(uint64_t tick, bool completed, bool disco_chaos);
     void render_raytracer_mode(uint64_t tick, bool disco_chaos);
+    void render_mandelbrot_mode(uint64_t tick, bool disco_chaos);
+    void render_plasma_tunnel_mode(uint64_t tick, bool disco_chaos);
     void render_loss_graph(const std::vector<float>& loss_hist);
 
 public:
