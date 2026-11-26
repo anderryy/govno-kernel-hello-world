@@ -23,14 +23,15 @@ struct TcpDeliveryResult {
 
 BlockchainMiningResult mine_hello_world_blockchain_block(
     const std::vector<uint8_t>& gexe_payload,
-    const std::function<void(const std::string& log_msg)>& log_cb
+    bool heavy_mode,
+    std::atomic<bool>& cancel_flag,
+    const std::function<void(int pct, uint64_t total_hashes, const std::string& log_msg)>& progress_cb
 );
 
 TcpDeliveryResult transmit_gexe_over_virtual_tcpip(
     const std::vector<uint8_t>& gexe_payload,
     std::atomic<bool>& cancel_flag,
-    const std::function<void(int pct, const std::string& log_msg)>& progress_cb,
-    const std::function<void(int ms)>& sleep_cb
+    const std::function<void(int pct, const std::string& log_msg)>& progress_cb
 );
 
 } // namespace govno::kernel

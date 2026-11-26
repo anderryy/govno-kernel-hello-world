@@ -3,6 +3,7 @@
 #include "madness/extreme_cs.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <iomanip>
 #include <sstream>
@@ -98,56 +99,108 @@ VirtualPacket build_virtual_tcp_packet(
 
 BlockchainMiningResult mine_hello_world_blockchain_block(
     const std::vector<uint8_t>& gexe_payload,
-    const std::function<void(const std::string& log_msg)>& log_cb
+    bool heavy_mode,
+    std::atomic<bool>& cancel_flag,
+    const std::function<void(int pct, uint64_t total_hashes, const std::string& log_msg)>& progress_cb
 ) {
     BlockchainMiningResult res;
-    uint64_t nonce = 0;
-    std::array<uint8_t, 32> digest{};
-    std::vector<uint8_t> block_buf(gexe_payload.begin(), gexe_payload.end());
-    block_buf.resize(gexe_payload.size() + 8);
+    const size_t num_blocks = heavy_mode ? 6 : 1;
+    const int diff_bits = heavy_mode ? 20 : 12;
 
-    // Real FIPS-180-4 SHA-256 Proof-of-Work: require 12 leading zero bits (digest[0]==0 && (digest[1]&0xF0)==0)
-    while (true) {
-        for (int b = 0; b < 8; ++b) {
-            block_buf[gexe_payload.size() + static_cast<size_t>(b)] =
-                static_cast<uint8_t>((nonce >> (b * 8)) & 0xFFULL);
-        }
-        digest = govno::madness::sha256_bytes(block_buf.data(), block_buf.size());
-        ++res.hashes_computed;
-        if (digest[0] == 0x00 && (digest[1] & 0xF0) == 0x00) {
-            break;
-        }
-        ++nonce;
-    }
-
-    res.nonce = nonce;
-    std::ostringstream hs;
-    hs << "0x" << std::hex << std::setfill('0');
-    for (uint8_t byte : digest) {
-        hs << std::setw(2) << static_cast<unsigned>(byte);
-    }
-    res.block_hash_hex = hs.str();
-
+    std::string prev_hash = "0x000000000000deadbeef00000000000000000000000000000000000000000000";
     std::ostringstream ld;
-    ld << "; === GOVNO-CHAIN FIPS-180-4 SHA-256 PROOF-OF-WORK NOTARIZATION ===\r\n"
-       << "Block #1337 | Difficulty: 0x000FFFFFFFFFFFFF (12 leading zero bits)\r\n"
-       << "PrevHash: 0x000000000000deadbeef00000000000000000000000000000000000000000000\r\n"
-       << "Nonce   : " << res.nonce << " (computed " << res.hashes_computed << " SHA-256 blocks)\r\n"
-       << "SHA-256 : " << res.block_hash_hex << "\r\n"
-       << "Payload : /bin/hello_world.gexe (" << gexe_payload.size() << " bytes)\r\n"
-       << "Status  : CONFIRMED ON GOVNO-MAINNET (GAS FEE: 420 GOVNOCOIN)\r\n";
-    res.ledger_dump = ld.str();
+    ld << "; === GOVNO-CHAIN FIPS-180-4 SHA-256 MERKLE & MULTI-BLOCK PROOF-OF-WORK ===\r\n"
+       << "Blocks: " << num_blocks << " | Difficulty: " << diff_bits << " leading zero bits\r\n\r\n";
 
-    log_cb("[SHA256-POW] Намайнен блок #1337 (nonce=" + std::to_string(res.nonce) +
-           ", sha256=" + res.block_hash_hex.substr(0, 22) + "..., хешей=" + std::to_string(res.hashes_computed) + ")");
+    // Compute Merkle Root of 512 synthetic transactions
+    std::vector<std::array<uint8_t, 32>> merkle_layer(heavy_mode ? 1024 : 32);
+    for (size_t i = 0; i < merkle_layer.size(); ++i) {
+        std::vector<uint8_t> tx = gexe_payload;
+        tx.push_back(static_cast<uint8_t>(i & 0xFF));
+        tx.push_back(static_cast<uint8_t>((i >> 8) & 0xFF));
+        merkle_layer[i] = govno::madness::sha256_bytes(tx.data(), tx.size());
+    }
+    while (merkle_layer.size() > 1) {
+        std::vector<std::array<uint8_t, 32>> next_layer;
+        next_layer.reserve(merkle_layer.size() / 2);
+        for (size_t i = 0; i + 1 < merkle_layer.size(); i += 2) {
+            std::array<uint8_t, 64> pair_buf{};
+            std::memcpy(pair_buf.data(), merkle_layer[i].data(), 32);
+            std::memcpy(pair_buf.data() + 32, merkle_layer[i + 1].data(), 32);
+            next_layer.push_back(govno::madness::sha256_bytes(pair_buf.data(), pair_buf.size()));
+        }
+        merkle_layer = std::move(next_layer);
+    }
+
+    const auto t_mine_start = std::chrono::steady_clock::now();
+
+    for (size_t blk = 0; blk < num_blocks; ++blk) {
+        if (cancel_flag.load()) break;
+
+        std::vector<uint8_t> block_buf(gexe_payload.begin(), gexe_payload.end());
+        block_buf.insert(block_buf.end(), prev_hash.begin(), prev_hash.end());
+        block_buf.insert(block_buf.end(), merkle_layer[0].begin(), merkle_layer[0].end());
+        size_t nonce_off = block_buf.size();
+        block_buf.resize(nonce_off + 8);
+
+        uint64_t nonce = 0;
+        std::array<uint8_t, 32> digest{};
+        while (true) {
+            if ((nonce & 0x7FFFULL) == 0) {
+                if (cancel_flag.load()) break;
+                if (nonce > 0) {
+                    auto now = std::chrono::steady_clock::now();
+                    double sec = std::max(0.001, std::chrono::duration<double>(now - t_mine_start).count());
+                    uint64_t hps = static_cast<uint64_t>(static_cast<double>(res.hashes_computed) / sec);
+                    int pct = static_cast<int>(((blk * 100) / num_blocks) + (50 / num_blocks));
+                    progress_cb(std::min(99, pct), res.hashes_computed,
+                                "[SHA256-MINER] Блок #" + std::to_string(1337 + blk) +
+                                " | Перебрано " + std::to_string(res.hashes_computed) +
+                                " SHA-256 (" + std::to_string(hps / 1000ULL) + " kH/s)...");
+                }
+            }
+            for (int b = 0; b < 8; ++b) {
+                block_buf[nonce_off + static_cast<size_t>(b)] =
+                    static_cast<uint8_t>((nonce >> (b * 8)) & 0xFFULL);
+            }
+            digest = govno::madness::sha256_bytes(block_buf.data(), block_buf.size());
+            ++res.hashes_computed;
+
+            bool match = heavy_mode
+                ? (digest[0] == 0x00 && digest[1] == 0x00 && (digest[2] & 0xF0) == 0x00)
+                : (digest[0] == 0x00 && (digest[1] & 0xF0) == 0x00);
+            if (match) break;
+            ++nonce;
+        }
+        if (cancel_flag.load()) break;
+
+        res.nonce = nonce;
+        std::ostringstream hs;
+        hs << "0x" << std::hex << std::setfill('0');
+        for (uint8_t byte : digest) hs << std::setw(2) << static_cast<unsigned>(byte);
+        res.block_hash_hex = hs.str();
+
+        ld << "Block #" << (1337 + blk) << " | Nonce=" << nonce
+           << "\r\n  PrevHash: " << prev_hash
+           << "\r\n  SHA-256 : " << res.block_hash_hex << "\r\n\r\n";
+
+        int pct = static_cast<int>(((blk + 1) * 100) / num_blocks);
+        progress_cb(pct, res.hashes_computed,
+                    "[SHA256-POW] Блок #" + std::to_string(1337 + blk) + " добыт! nonce=" +
+                    std::to_string(nonce) + " -> " + res.block_hash_hex.substr(0, 20) + "...");
+        prev_hash = res.block_hash_hex;
+    }
+
+    ld << "Total SHA-256 compressions: " << res.hashes_computed
+       << "\r\nStatus: CONFIRMED ON GOVNO-MAINNET (GAS FEE: 420 GOVNOCOIN)\r\n";
+    res.ledger_dump = ld.str();
     return res;
 }
 
 TcpDeliveryResult transmit_gexe_over_virtual_tcpip(
     const std::vector<uint8_t>& gexe_payload,
     std::atomic<bool>& cancel_flag,
-    const std::function<void(int pct, const std::string& log_msg)>& progress_cb,
-    const std::function<void(int ms)>& sleep_cb
+    const std::function<void(int pct, const std::string& log_msg)>& progress_cb
 ) {
     TcpDeliveryResult out;
     std::vector<VirtualPacket> wire_ring;
@@ -214,7 +267,6 @@ TcpDeliveryResult transmit_gexe_over_virtual_tcpip(
                                  s << std::hex << std::setw(4) << std::setfill('0') << p.ip_checksum;
                                  return s.str();
                              })() + ")");
-            sleep_cb(55);
         }
     }
 

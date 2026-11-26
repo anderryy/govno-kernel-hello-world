@@ -25,13 +25,15 @@ bool ChiptuneSynth::start() {
     wfx.nBlockAlign = 2;
     wfx.nAvgBytesPerSec = 44100;
 
+    HANDLE ev = CreateEventW(nullptr, FALSE, FALSE, nullptr);
     HWAVEOUT hwo = nullptr;
-    if (waveOutOpen(&hwo, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR) {
+    if (waveOutOpen(&hwo, WAVE_MAPPER, &wfx, reinterpret_cast<DWORD_PTR>(ev), 0, ev ? CALLBACK_EVENT : CALLBACK_NULL) != MMSYSERR_NOERROR) {
+        if (ev) CloseHandle(ev);
         return false;
     }
 
     playing_.store(true);
-    audio_thread_ = std::thread([this, hwo]() {
+    audio_thread_ = std::thread([this, hwo, ev]() {
         constexpr int SR = 22050;
         constexpr int CHUNK_SAMPLES = 2048;
 
@@ -94,8 +96,8 @@ bool ChiptuneSynth::start() {
                 waveOutUnprepareHeader(hwo, &hdrs[cur], sizeof(WAVEHDR));
                 fill_buf(cur);
                 cur = 1 - cur;
-            } else {
-                Sleep(15);
+            } else if (ev) {
+                WaitForSingleObject(ev, 25);
             }
         }
 
@@ -104,6 +106,7 @@ bool ChiptuneSynth::start() {
             if (hdrs[b].dwFlags & WHDR_PREPARED) waveOutUnprepareHeader(hwo, &hdrs[b], sizeof(WAVEHDR));
         }
         waveOutClose(hwo);
+        if (ev) CloseHandle(ev);
     });
     return true;
 }

@@ -13,7 +13,6 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
-#include <thread>
 #include <unordered_map>
 
 namespace govno::kernel {
@@ -83,7 +82,6 @@ public:
         size_t subleq_cyc,
         size_t holyc_cyc,
         std::atomic<bool>& cancel_flag,
-        const std::function<void(int ms)>& sleep_cb,
         const std::function<void(char ch)>& vga_write_cb
     ) {
         uint32_t entry = read_u32_le(gexe_image, 8);
@@ -151,7 +149,6 @@ public:
                     op_name = std::string("INT 0x80 ('") + (ch >= 32 ? ch : '?') + "')";
                     vga_write_cb(ch);
                     rip_ += 2;
-                    sleep_cb(120);
                     break;
                 }
                 case govno::compiler::GovnoOpcode::OP_HALT:
@@ -184,19 +181,9 @@ public:
 
 } // namespace
 
-void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turbo_mode) {
+void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool fast_mode) {
     const auto t_start = std::chrono::steady_clock::now();
-
-    auto sleep_step = [&](int ms) {
-        if (cancel_flag.load()) return;
-        bool is_turbo = turbo_mode;
-        {
-            std::lock_guard<std::mutex> lock(g_state().mtx);
-            is_turbo = g_state().turbo_mode;
-        }
-        if (is_turbo || ms <= 0) return;
-        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-    };
+    const bool heavy_mode = !fast_mode;
 
     HardwareProbeInfo hw = probe_real_hardware_for_comedy();
 
@@ -240,38 +227,40 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
     }
     append_kernel_log("[HOLYC-AOT] Выход AOT (HOLY_SHIFT=" + std::to_string(holyc_aot.magic_power) +
                       "): \"" + holyc_aot.emitted_text + "\"");
-    sleep_step(180);
 
-    // 1. BIOS + VMM + Build 24 Kernel .o files
+    // 1. BIOS + VMM + Build 24 Kernel .o files (Real CRC32 + 8M Prime Sieve)
     VirtualMemorySubsystem vmm;
     vmm.alloc_kernel_pages(1536);
     {
         std::lock_guard<std::mutex> lock(g_state().mtx);
         g_state().stage = PipelineStage::STAGE_2_BIOS_AND_KERNEL_BUILD;
-        g_state().status_banner = "Сборка 24 модулей ядра GovnoOS из исходников...";
+        g_state().status_banner = "Сборка 24 модулей ядра (CRC32-стресс + Решето Эратосфена до 8M)...";
         g_state().cpu.ram_allocated_kb = vmm.total_allocated_kb();
         g_state().cpu.page_faults = 13;
     }
 
     size_t built_modules = simulate_kernel_source_tree_build(
         cancel_flag,
+        heavy_mode,
         [&](int pct, const std::string& msg) {
             append_kernel_log(msg);
             std::lock_guard<std::mutex> lock(g_state().mtx);
             g_state().kernel_progress = pct;
-        },
-        sleep_step
+        }
     );
     if (cancel_flag.load()) return;
 
-    // 2. Real SGD Neural Network Training seeded by HolyC AOT output!
+    // 2. Real SGD Deep Ensemble Neural Network Training seeded by HolyC AOT output!
     {
         std::lock_guard<std::mutex> lock(g_state().mtx);
         g_state().stage = PipelineStage::STAGE_3_NEURAL_NET_TRAINING;
-        g_state().status_banner = "Обучение нейросети с нуля методом SGD (обучается на выходе HolyC AOT)...";
+        g_state().status_banner = heavy_mode
+            ? "Реальное обучение ансамбля 14 нейросетей методом SGD (33 600 эпох)..."
+            : "Обучение нейросети методом SGD...";
     }
     auto nn = govno::madness::train_hello_world_neural_net(
         holyc_aot.emitted_text,
+        heavy_mode,
         cancel_flag,
         [&](int pct, float loss, const std::string& pred, const std::string& msg) {
             append_kernel_log(msg);
@@ -279,44 +268,47 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
             g_state().ml_crypto_progress = (pct * 25) / 100;
             g_state().ml_loss_history.push_back(loss);
             g_state().ml_live_prediction = pred;
-        },
-        sleep_step
+        }
     );
     if (cancel_flag.load()) return;
 
-    // 3. Darwin Genetic Evolution
+    // 3. Darwin Multi-Island Genetic Evolution
     {
         std::lock_guard<std::mutex> lock(g_state().mtx);
         g_state().stage = PipelineStage::STAGE_4_GENETIC_EVOLUTION;
-        g_state().status_banner = "Дарвинская эволюция 96 мутантов в '" + nn.predicted_string + "'...";
+        g_state().status_banner = "Дарвинская эволюция популяций мутантов в '" + nn.predicted_string + "'...";
     }
     auto ga = govno::madness::evolve_hello_world_genetics(
         nn.predicted_string,
+        heavy_mode,
         cancel_flag,
         [&](int pct, const std::string& msg) {
             append_kernel_log(msg);
             std::lock_guard<std::mutex> lock(g_state().mtx);
             g_state().ml_crypto_progress = 25 + (pct * 25) / 100;
-        },
-        sleep_step
+        }
     );
     if (cancel_flag.load()) return;
 
-    // 4. Toy RSA Encryption + Brute-force Factorization Crack
+    // 4. Multi-Key RSA Encryption + 46-bit Brute-Force Factorization Crack
     {
         std::lock_guard<std::mutex> lock(g_state().mtx);
         g_state().stage = PipelineStage::STAGE_5_RSA_CRYPTO_AND_CRACK;
-        g_state().status_banner = "Шифрование RSA и брутфорс-взлом собственного ключа...";
+        g_state().status_banner = heavy_mode
+            ? "Взлом 8 ключей 46-битного RSA прямым перебором делителей..."
+            : "Взлом собственного ключа RSA перебором делителей...";
     }
     auto rsa = govno::madness::rsa_encrypt_and_crack(
         ga.evolved_string,
+        heavy_mode,
+        cancel_flag,
         [&](int pct, const std::string& msg) {
             append_kernel_log(msg);
             std::lock_guard<std::mutex> lock(g_state().mtx);
             g_state().ml_crypto_progress = 50 + (pct * 25) / 100;
-        },
-        sleep_step
+        }
     );
+    if (cancel_flag.load()) return;
 
     // 5. LZ77 -> Base64 -> Hex -> ITU Morse Code -> Decode Roundtrip
     {
@@ -330,8 +322,7 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
             append_kernel_log(msg);
             std::lock_guard<std::mutex> lock(g_state().mtx);
             g_state().ml_crypto_progress = 75 + (pct * 25) / 100;
-        },
-        sleep_step
+        }
     );
 
     // 6. Runtime HolyC Compiler + #exe + VM + GodTalk!
@@ -346,9 +337,8 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
         [&](int pct, const std::string& msg) {
             append_kernel_log(msg);
             std::lock_guard<std::mutex> lock(g_state().mtx);
-            g_state().compiler_progress = (pct * 16) / 100;
-        },
-        sleep_step
+            g_state().compiler_progress = (pct * 10) / 100;
+        }
     );
     if (cancel_flag.load()) return;
 
@@ -357,27 +347,42 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
     append_kernel_log("[A*-LABYRINTH] Строка сбежала из лабиринта 25x11 за " +
                       std::to_string(maze.path_length) + " шагов (раскрыто узлов: " +
                       std::to_string(maze.nodes_expanded) + ")");
-    sleep_step(80);
 
-    // 6C. Execute all 15 bundled polyglot languages (ASM, Befunge-93, Forth, Lisp, Prolog, BF, COBOL, F90, HS, Rust, Zig, Lua, Py, SQL, GLSL)
+    // 6C. Execute all 15 bundled polyglot languages
     {
         std::lock_guard<std::mutex> lock(g_state().mtx);
-        g_state().status_banner = "Запуск 15 полиглот-движков (x86-64, Befunge-93, Forth, Lisp, Prolog, COBOL, Rust, Zig...)";
+        g_state().status_banner = "Запуск 15 полиглот-ВМ (x86-64, Befunge-93, Forth, Lisp, Prolog, COBOL, Rust, Zig...)";
     }
     auto poly = govno::polyglot::run_all_polyglot_engines(maze.delivered_payload);
     append_kernel_log("[POLYGLOT-15] Исполнено " + std::to_string(poly.results.size()) +
                       " языков (" + std::to_string(poly.total_polyglot_bytes) + " Б, " +
                       std::to_string(poly.total_steps) + " шагов VM) -> \"" + poly.final_payload + "\"");
 
-    // 6D. Extreme CS codecs & solvers: DFT -> Huffman -> Sudoku+8Queens -> Game of Life + Floyd-Warshall
+    // 6D. Extreme CS Codecs & Heavy Math Gauntlet (LU 220x220 + N-Body + 12-Queens + 128x128 Life + 1024x576 Mandelbrot)
+    {
+        std::lock_guard<std::mutex> lock(g_state().mtx);
+        g_state().status_banner = heavy_mode
+            ? "Тяжёлая математика: СЛАУ 220x220 + N-Body гравитация + 12-Ферзей + Life 128x128 + Mandelbrot..."
+            : "Запуск CS-испытаний: DFT + Хаффман + Судоку + GameOfLife + СЛАУ...";
+    }
     auto dft = govno::madness::dft_idft_roundtrip(poly.final_payload);
     auto huff = govno::madness::huffman_compress_decompress(dft.ok ? dft.output : "DFT_FAIL");
     auto sud = govno::madness::solve_sudoku_and_nqueens(huff.ok ? huff.output : "HUFF_FAIL");
     auto life = govno::madness::game_of_life_and_graph(sud.ok ? sud.output : "SUD_FAIL");
-    std::string cs_verified_out = life.ok ? life.output : "LIFE_FAIL";
-    append_kernel_log("[DSP/ALGO] DFT+IDFT -> Huffman Tree -> Sudoku+8Queens(92) -> GameOfLife(40gen)+FloydWarshall -> \"" +
-                      cs_verified_out + "\"");
-    sleep_step(80);
+    auto gauntlet = govno::madness::run_extreme_compute_gauntlet(
+        life.ok ? life.output : "LIFE_FAIL",
+        heavy_mode,
+        cancel_flag,
+        [&](int pct, const std::string& msg) {
+            append_kernel_log(msg);
+            std::lock_guard<std::mutex> lock(g_state().mtx);
+            g_state().compiler_progress = 10 + (pct * 50) / 100;
+        }
+    );
+    if (cancel_flag.load()) return;
+
+    std::string cs_verified_out = gauntlet.ok ? gauntlet.output : "GAUNTLET_FAIL";
+    append_kernel_log("[DSP/MATH-GAUNTLET] Пройдены СЛАУ/N-Body/Ферзи/Life/Mandelbrot -> \"" + cs_verified_out + "\"");
 
     {
         std::lock_guard<std::mutex> lock(g_state().mtx);
@@ -411,7 +416,7 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
     compiled.prolog_cbl_f90_dump = poly.prolog_cbl_f90_trace;
     compiled.systems_lang_dump = poly.systems_lang_trace;
     compiled.dft_huffman_dump = dft.dump + "\r\n" + huff.dump;
-    compiled.sudoku_life_dump = sud.dump + "\r\n" + life.dump;
+    compiled.sudoku_life_dump = sud.dump + "\r\n" + life.dump + gauntlet.report;
     compiled.polyglot_languages_count = poly.results.size();
     compiled.polyglot_total_bytes = poly.total_polyglot_bytes;
     compiled.polyglot_total_steps = poly.total_steps;
@@ -432,14 +437,13 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
         [&](int pct, const std::string& msg) {
             append_kernel_log(msg);
             std::lock_guard<std::mutex> lock(g_state().mtx);
-            g_state().compiler_progress = 16 + (pct * 84) / 100;
+            g_state().compiler_progress = 60 + (pct * 40) / 100;
             if (pct < 20) g_state().stage = PipelineStage::STAGE_8_XML_JSON_SQL;
             else if (pct < 55) g_state().stage = PipelineStage::STAGE_9_PREPROCESSOR_LEXER_AST;
             else if (pct < 85) g_state().stage = PipelineStage::STAGE_10_IR_LISP_C_BRAINFUCK;
             else if (pct < 95) g_state().stage = PipelineStage::STAGE_11_SUBLEQ_OISC;
             else g_state().stage = PipelineStage::STAGE_12_ASM_LINKER;
-        },
-        sleep_step
+        }
     );
     if (!ok || cancel_flag.load()) {
         std::lock_guard<std::mutex> lock(g_state().mtx);
@@ -448,23 +452,34 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
         return;
     }
 
-    // 8. Blockchain Proof-of-Work + Ethernet/IPv4/TCP/HTTP Delivery
+    // 8. Multi-Block FIPS-180-4 SHA-256 Proof-of-Work + Ethernet/IPv4/TCP/HTTP Delivery
     {
         std::lock_guard<std::mutex> lock(g_state().mtx);
         g_state().stage = PipelineStage::STAGE_13_BLOCKCHAIN_AND_TCPIP;
-        g_state().status_banner = "Майнинг блока GovnoChain + отправка .gexe по виртуальному TCP/IP...";
+        g_state().status_banner = heavy_mode
+            ? "Майнинг 4 блоков SHA-256 PoW (сложность 19 нулевых бит) + TCP/IP стек..."
+            : "Майнинг блока SHA-256 PoW + отправка .gexe по TCP/IP...";
     }
     auto pow = mine_hello_world_blockchain_block(
         compiled.gexe_bytecode,
-        [&](const std::string& msg) { append_kernel_log(msg); }
+        heavy_mode,
+        cancel_flag,
+        [&](int pct, uint64_t hashes, const std::string& msg) {
+            append_kernel_log(msg);
+            std::lock_guard<std::mutex> lock(g_state().mtx);
+            g_state().cpu.pow_hashes = hashes;
+            g_state().driver_net_progress = (pct * 50) / 100;
+        }
     );
+    if (cancel_flag.load()) return;
+
     compiled.pow_nonce = pow.nonce;
     compiled.pow_block_hash = pow.block_hash_hex;
     compiled.gexe_and_blockchain_dump = pow.ledger_dump + "\r\n" + govno::compiler::format_hex_dump(compiled.gexe_bytecode);
     {
         std::lock_guard<std::mutex> lock(g_state().mtx);
         g_state().cpu.pow_hashes = pow.hashes_computed;
-        g_state().driver_net_progress = 15;
+        g_state().driver_net_progress = 50;
     }
 
     auto net = transmit_gexe_over_virtual_tcpip(
@@ -473,10 +488,9 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
         [&](int pct, const std::string& msg) {
             append_kernel_log(msg);
             std::lock_guard<std::mutex> lock(g_state().mtx);
-            g_state().driver_net_progress = 15 + (pct * 35) / 100;
+            g_state().driver_net_progress = 50 + (pct * 25) / 100;
             g_state().cpu.packets_sent += 1;
-        },
-        sleep_step
+        }
     );
     if (cancel_flag.load()) return;
 
@@ -510,10 +524,9 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
         append_kernel_log(std::string("[INSMOD] ") + name + " -> " + note);
         {
             std::lock_guard<std::mutex> lock(g_state().mtx);
-            g_state().driver_net_progress = 50 + (drv_idx * 45) / 6;
+            g_state().driver_net_progress = 75 + (drv_idx * 20) / 6;
             g_state().cpu.ram_allocated_kb = vmm.total_allocated_kb();
         }
-        sleep_step(90);
     }
 
     GovnoVFS vfs;
@@ -530,7 +543,6 @@ void run_entire_kernel_and_vm_pipeline(std::atomic<bool>& cancel_flag, bool turb
         compiled.subleq_cycles,
         compiled.holyc_vm_cycles,
         cancel_flag,
-        sleep_step,
         [&](char ch) {
             std::lock_guard<std::mutex> lock(g_state().mtx);
             g_state().final_vga_output.push_back(ch);

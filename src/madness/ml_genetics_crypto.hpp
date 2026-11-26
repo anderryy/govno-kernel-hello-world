@@ -41,28 +41,28 @@ struct CompressionMorseResult {
 
 NeuralTrainResult train_hello_world_neural_net(
     const std::string& training_target,
+    bool heavy_mode,
     std::atomic<bool>& cancel_flag,
-    const std::function<void(int pct, float loss, const std::string& cur_pred, const std::string& log_msg)>& cb,
-    const std::function<void(int ms)>& sleep_cb
+    const std::function<void(int pct, float loss, const std::string& cur_pred, const std::string& log_msg)>& cb
 );
 
 GeneticEvolveResult evolve_hello_world_genetics(
     const std::string& target,
+    bool heavy_mode,
     std::atomic<bool>& cancel_flag,
-    const std::function<void(int pct, const std::string& log_msg)>& cb,
-    const std::function<void(int ms)>& sleep_cb
+    const std::function<void(int pct, const std::string& log_msg)>& cb
 );
 
 RsaCrackResult rsa_encrypt_and_crack(
     const std::string& input,
-    const std::function<void(int pct, const std::string& log_msg)>& cb,
-    const std::function<void(int ms)>& sleep_cb
+    bool heavy_mode,
+    std::atomic<bool>& cancel_flag,
+    const std::function<void(int pct, const std::string& log_msg)>& cb
 );
 
 CompressionMorseResult run_lz77_base64_morse_roundtrip(
     const std::string& input,
-    const std::function<void(int pct, const std::string& log_msg)>& cb,
-    const std::function<void(int ms)>& sleep_cb
+    const std::function<void(int pct, const std::string& log_msg)>& cb
 );
 
 } // namespace govno::madness

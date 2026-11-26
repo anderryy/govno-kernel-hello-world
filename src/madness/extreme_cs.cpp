@@ -447,4 +447,216 @@ ExtremeCSResult game_of_life_and_graph(const std::string& input) {
     return res;
 }
 
+namespace {
+
+void count_n_queens_general(int n, int row, uint32_t cols, uint32_t d1, uint32_t d2, size_t& count) {
+    if (row == n) {
+        ++count;
+        return;
+    }
+    uint32_t mask = (1U << n) - 1U;
+    uint32_t avail = mask & ~(cols | d1 | d2);
+    while (avail) {
+        uint32_t bit = avail & (~avail + 1U);
+        avail ^= bit;
+        count_n_queens_general(n, row + 1, cols | bit, (d1 | bit) << 1, (d2 | bit) >> 1, count);
+    }
+}
+
+} // namespace
+
+HeavyGauntletResult run_extreme_compute_gauntlet(
+    const std::string& input,
+    bool heavy_mode,
+    std::atomic<bool>& cancel_flag,
+    const std::function<void(int pct, const std::string& log_msg)>& cb
+) {
+    HeavyGauntletResult out;
+    if (input.empty()) return out;
+
+    uint64_t flops = 0;
+    std::ostringstream rep;
+    rep << "\r\n=== EXTREME COMPUTE GAUNTLET (" << (heavy_mode ? "OVERKILL REAL WORKLOAD" : "FAST VERIFY") << ") ===\r\n";
+
+    // 1. Dense Gaussian Elimination (380x380 or 64x64)
+    const size_t mat_n = heavy_mode ? 380 : 64;
+    std::vector<double> A(mat_n * mat_n, 0.0);
+    std::vector<double> b(mat_n, 0.0);
+    for (size_t i = 0; i < mat_n; ++i) {
+        double row_sum = 0.0;
+        for (size_t j = 0; j < mat_n; ++j) {
+            double v = std::cos(static_cast<double>((i + 1) * (j + 1)) * 0.137) +
+                       0.5 * std::sin(static_cast<double>(i + 3) / static_cast<double>(j + 2));
+            A[i * mat_n + j] = v;
+            row_sum += std::abs(v);
+        }
+        A[i * mat_n + i] += row_sum + 8.0; // strictly diagonally dominant
+        b[i] = static_cast<double>(static_cast<unsigned char>(input[i % input.size()])) + 0.25 * static_cast<double>(i);
+    }
+    std::vector<double> A_orig = A;
+    std::vector<double> b_orig = b;
+
+    for (size_t k = 0; k < mat_n; ++k) {
+        if ((k & 15u) == 0 && cancel_flag.load()) return out;
+        size_t piv = k;
+        double max_v = std::abs(A[k * mat_n + k]);
+        for (size_t i = k + 1; i < mat_n; ++i) {
+            double v = std::abs(A[i * mat_n + k]);
+            if (v > max_v) { max_v = v; piv = i; }
+        }
+        if (piv != k) {
+            for (size_t j = k; j < mat_n; ++j) std::swap(A[k * mat_n + j], A[piv * mat_n + j]);
+            std::swap(b[k], b[piv]);
+        }
+        double inv_diag = 1.0 / A[k * mat_n + k];
+        for (size_t i = k + 1; i < mat_n; ++i) {
+            double factor = A[i * mat_n + k] * inv_diag;
+            for (size_t j = k; j < mat_n; ++j) {
+                A[i * mat_n + j] -= factor * A[k * mat_n + j];
+            }
+            b[i] -= factor * b[k];
+            flops += (mat_n - k) * 2ULL;
+        }
+    }
+    std::vector<double> x(mat_n, 0.0);
+    for (int i = static_cast<int>(mat_n) - 1; i >= 0; --i) {
+        double sum = b[static_cast<size_t>(i)];
+        for (size_t j = static_cast<size_t>(i) + 1; j < mat_n; ++j) {
+            sum -= A[static_cast<size_t>(i) * mat_n + j] * x[j];
+        }
+        x[static_cast<size_t>(i)] = sum / A[static_cast<size_t>(i) * mat_n + static_cast<size_t>(i)];
+    }
+    double max_resid = 0.0;
+    for (size_t i = 0; i < mat_n; ++i) {
+        double ax = 0.0;
+        for (size_t j = 0; j < mat_n; ++j) ax += A_orig[i * mat_n + j] * x[j];
+        max_resid = std::max(max_resid, std::abs(ax - b_orig[i]));
+    }
+    cb(25, "[MATRIX-LU] Решена плотная СЛАУ " + std::to_string(mat_n) + "x" + std::to_string(mat_n) +
+           " (невязка=" + std::to_string(max_resid) + ")");
+
+    // 2. O(N^2 * T) N-Body Gravitational Particle Simulation
+    const size_t nbodies = heavy_mode ? 720 : 96;
+    const size_t nsteps = heavy_mode ? 280 : 28;
+    std::vector<double> px(nbodies), py(nbodies), pz(nbodies), vx(nbodies, 0.0), vy(nbodies, 0.0), vz(nbodies, 0.0);
+    for (size_t i = 0; i < nbodies; ++i) {
+        double a = static_cast<double>(i) * 0.61803398875;
+        px[i] = std::cos(a) * (1.0 + 0.1 * static_cast<double>(i % 13));
+        py[i] = std::sin(a) * (1.0 + 0.1 * static_cast<double>(i % 17));
+        pz[i] = std::sin(a * 0.5) * 0.5;
+    }
+    constexpr double DT = 0.004;
+    for (size_t step = 0; step < nsteps; ++step) {
+        if ((step & 7u) == 0 && cancel_flag.load()) return out;
+        for (size_t i = 0; i < nbodies; ++i) {
+            double fx = 0.0, fy = 0.0, fz = 0.0;
+            for (size_t j = 0; j < nbodies; ++j) {
+                if (i == j) continue;
+                double dx = px[j] - px[i];
+                double dy = py[j] - py[i];
+                double dz = pz[j] - pz[i];
+                double d2 = dx * dx + dy * dy + dz * dz + 0.04;
+                double inv = 1.0 / (d2 * std::sqrt(d2));
+                fx += dx * inv;
+                fy += dy * inv;
+                fz += dz * inv;
+                flops += 14ULL;
+            }
+            vx[i] += fx * 0.002 * DT;
+            vy[i] += fy * 0.002 * DT;
+            vz[i] += fz * 0.002 * DT;
+        }
+        for (size_t i = 0; i < nbodies; ++i) {
+            px[i] += vx[i] * DT;
+            py[i] += vy[i] * DT;
+            pz[i] += vz[i] * DT;
+        }
+        if (heavy_mode && (step + 1) % 60 == 0) {
+            cb(25 + static_cast<int>(((step + 1) * 25) / nsteps),
+               "[N-BODY GRAVITY] Шаг " + std::to_string(step + 1) + "/" + std::to_string(nsteps) +
+               " (" + std::to_string(nbodies) + " частиц, попарные силы Ньютона)");
+        }
+    }
+
+    // 3. Combinatorics Batch: 13-Queens + Large Game of Life (192x192 x 600 gens)
+    int nq_n = heavy_mode ? 13 : 9;
+    size_t nq_sols = 0;
+    count_n_queens_general(nq_n, 0, 0, 0, 0, nq_sols);
+    out.nqueens_solutions = nq_sols;
+
+    const int gw = heavy_mode ? 192 : 32;
+    const int gh = heavy_mode ? 192 : 32;
+    const int g_gens = heavy_mode ? 600 : 40;
+    std::vector<uint8_t> life_a(static_cast<size_t>(gw * gh), 0);
+    std::vector<uint8_t> life_b(static_cast<size_t>(gw * gh), 0);
+    for (int y = 0; y < gh; ++y) {
+        for (int x_i = 0; x_i < gw; ++x_i) {
+            life_a[static_cast<size_t>(y * gw + x_i)] = ((x_i * 7 + y * 13) % 5 == 0) ? 1 : 0;
+        }
+    }
+    int life_alive = 0;
+    for (int g = 0; g < g_gens; ++g) {
+        if ((g & 15) == 0 && cancel_flag.load()) return out;
+        life_alive = 0;
+        for (int y = 0; y < gh; ++y) {
+            int ym = (y == 0) ? (gh - 1) : (y - 1);
+            int yp = (y + 1 == gh) ? 0 : (y + 1);
+            for (int x_i = 0; x_i < gw; ++x_i) {
+                int xm = (x_i == 0) ? (gw - 1) : (x_i - 1);
+                int xp = (x_i + 1 == gw) ? 0 : (x_i + 1);
+                int nbr = life_a[ym * gw + xm] + life_a[ym * gw + x_i] + life_a[ym * gw + xp] +
+                          life_a[y * gw + xm]  +                         life_a[y * gw + xp]  +
+                          life_a[yp * gw + xm] + life_a[yp * gw + x_i] + life_a[yp * gw + xp];
+                uint8_t st = (life_a[y * gw + x_i] ? (nbr == 2 || nbr == 3) : (nbr == 3)) ? 1 : 0;
+                life_b[y * gw + x_i] = st;
+                life_alive += st;
+            }
+        }
+        life_a.swap(life_b);
+        flops += static_cast<uint64_t>(gw * gh * 10);
+    }
+    cb(75, "[NP + LIFE] " + std::to_string(nq_n) + "-Ферзей: " + std::to_string(nq_sols) +
+           " решений | GameOfLife " + std::to_string(gw) + "x" + std::to_string(gh) + " x" +
+           std::to_string(g_gens) + " (живых=" + std::to_string(life_alive) + ")");
+
+    // 4. Deep Complex 1080p Mandelbrot Matrix Verification (1920x1080 x 360 iters)
+    const int mw = heavy_mode ? 1920 : 192;
+    const int mh = heavy_mode ? 1080 : 108;
+    const int m_iter = heavy_mode ? 360 : 48;
+    uint64_t fractal_iter_sum = 0;
+    for (int y = 0; y < mh; ++y) {
+        if ((y & 31) == 0 && cancel_flag.load()) return out;
+        double ci = -1.2 + 2.4 * static_cast<double>(y) / static_cast<double>(mh);
+        for (int x_i = 0; x_i < mw; ++x_i) {
+            double cr = -2.0 + 2.8 * static_cast<double>(x_i) / static_cast<double>(mw);
+            double zr = 0.0, zi = 0.0;
+            int it = 0;
+            while (zr * zr + zi * zi <= 4.0 && it < m_iter) {
+                double nr = zr * zr - zi * zi + cr;
+                zi = 2.0 * zr * zi + ci;
+                zr = nr;
+                ++it;
+            }
+            fractal_iter_sum += static_cast<uint64_t>(it);
+            flops += static_cast<uint64_t>(it * 6 + 2);
+        }
+    }
+
+    rep << "  Linear System (" << mat_n << "x" << mat_n << ") max residual : " << std::scientific << max_resid << "\r\n"
+        << "  N-Body Gravity (" << nbodies << " stars, " << nsteps << " steps): COMPLETED\r\n"
+        << "  " << nq_n << "-Queens exact solutions      : " << nq_sols << "\r\n"
+        << "  Game of Life (" << gw << "x" << gh << ", " << g_gens << " gens) : " << life_alive << " alive\r\n"
+        << "  Mandelbrot (" << mw << "x" << mh << ", max=" << m_iter << ") iter_sum: " << std::fixed << fractal_iter_sum << "\r\n"
+        << "  Verified Output             : \"" << input << "\"\r\n";
+
+    cb(100, "[MANDELBROT-HDR] Отрендерено " + std::to_string(mw) + "x" + std::to_string(mh) +
+            " (iter_sum=" + std::to_string(fractal_iter_sum) + ", ~" + std::to_string(flops / 1000000ULL) + " MFLOPs)");
+
+    out.output = (max_resid < 1e-5 && nq_sols > 0 && fractal_iter_sum > 0) ? input : "GAUNTLET_FAIL";
+    out.report = rep.str();
+    out.total_flops_est = flops;
+    out.ok = (out.output == input);
+    return out;
+}
+
 } // namespace govno::madness

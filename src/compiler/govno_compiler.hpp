@@ -27,8 +27,7 @@ std::string format_hex_dump(const std::vector<uint8_t>& bytes);
 bool run_full_compiler_pipeline(
     const std::string& input_payload,
     CompilerArtifacts& out_artifacts,
-    const std::function<void(int pct, const std::string& log_msg)>& progress_cb,
-    const std::function<void(int ms)>& sleep_cb
+    const std::function<void(int pct, const std::string& log_msg)>& progress_cb
 );
 
 } // namespace govno::compiler

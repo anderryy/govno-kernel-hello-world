@@ -13,7 +13,7 @@
 
 namespace {
 
-int run_headless_self_test() {
+int run_headless_self_test(bool heavy_mode) {
     HANDLE h_out = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD ftype = (h_out && h_out != INVALID_HANDLE_VALUE) ? GetFileType(h_out) : FILE_TYPE_UNKNOWN;
     if (ftype == FILE_TYPE_PIPE || ftype == FILE_TYPE_DISK) {
@@ -29,7 +29,7 @@ int run_headless_self_test() {
     SetConsoleOutputCP(CP_UTF8);
 
     std::atomic<bool> cancel{false};
-    govno::kernel::run_entire_kernel_and_vm_pipeline(cancel, true);
+    govno::kernel::run_entire_kernel_and_vm_pipeline(cancel, !heavy_mode);
 
     std::string result, cpu_brand, god_words, pow_hash, poly_summary;
     size_t kernel_mods = 0, ml_epochs = 0, ga_gens = 0, hc_ops = 0, hc_cyc = 0;
@@ -37,7 +37,7 @@ int run_headless_self_test() {
     size_t poly_langs = 0, poly_bytes = 0, poly_steps = 0;
     int64_t holyc_aot_shift = 0;
     float ml_loss = 0.0f;
-    uint64_t rsa_n = 0, pow_hashes = 0, vm_cycles = 0;
+    uint64_t rsa_n = 0, pow_hashes = 0, vm_cycles = 0, elapsed_ms = 0;
 
     {
         std::lock_guard<std::mutex> lock(govno::g_state().mtx);
@@ -62,15 +62,16 @@ int run_headless_self_test() {
         tcp_pkts = st.artifacts.tcp_packet_count;
         pow_hashes = st.cpu.pow_hashes;
         vm_cycles = st.cpu.cycles;
+        elapsed_ms = st.elapsed_ms;
         poly_langs = st.artifacts.polyglot_languages_count;
         poly_bytes = st.artifacts.polyglot_total_bytes;
         poly_steps = st.artifacts.polyglot_total_steps;
     }
 
     std::printf(
-        "GOVNO-KERNEL TEMPLE-OS v6.0 (13x HOLYC AOT + 15 POLYGLOT VMs + SHA256 + DFT/HUFFMAN + 4D GFX) SELF-TEST\n"
+        "GOVNO-KERNEL TEMPLE-OS v6.0 (%s MODE, ZERO SLEEP) SELF-TEST\n"
         "CPU: %s\n"
-        "Result: \"%s\"\n"
+        "Result: \"%s\" (elapsed_ms=%llu)\n"
         "HolyC AOT HOLY_SHIFT (2`3): %lld\n"
         "Polyglot Suite: %zu languages (%zu B, %zu VM steps)\n"
         "%s"
@@ -87,8 +88,10 @@ int run_headless_self_test() {
         "TCP/IP packets: %zu\n"
         "SHA-256 PoW hashes: %llu (%s)\n"
         "GovnoCPU VM cycles: %llu\n",
+        heavy_mode ? "HEAVY" : "FAST-VERIFY",
         cpu_brand.c_str(),
         result.c_str(),
+        static_cast<unsigned long long>(elapsed_ms),
         static_cast<long long>(holyc_aot_shift),
         poly_langs,
         poly_bytes,
@@ -120,7 +123,8 @@ int run_headless_self_test() {
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR lpCmdLine, int nCmdShow) {
     if (lpCmdLine && std::wcsstr(lpCmdLine, L"--self-test") != nullptr) {
-        return run_headless_self_test();
+        bool heavy = (std::wcsstr(lpCmdLine, L"--heavy") != nullptr);
+        return run_headless_self_test(heavy);
     }
     return govno::gui::run_cursed_gui_app(hInstance, nCmdShow);
 }

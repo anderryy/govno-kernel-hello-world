@@ -727,13 +727,11 @@ std::string format_hex_dump(const std::vector<uint8_t>& bytes) {
 bool run_full_compiler_pipeline(
     const std::string& input_payload,
     CompilerArtifacts& out_artifacts,
-    const std::function<void(int pct, const std::string& log_msg)>& progress_cb,
-    const std::function<void(int ms)>& sleep_cb
+    const std::function<void(int pct, const std::string& log_msg)>& progress_cb
 ) {
     NICHEGO_NE_BOYSYA
     const std::string watermark = kCompileTimeWatermark.decrypt_at_runtime_with_suffering();
     progress_cb(5, "[TEMPLATE-ORACLE] " + watermark + " + consteval BF('H')==72 OK");
-    sleep_cb(100);
 
     // Stage 1: XML -> JSON -> GovnoSQL
     const std::string xml_manifest =
@@ -763,7 +761,6 @@ bool run_full_compiler_pipeline(
         out_artifacts.xml_json_sql_dump = xjs.str();
     }
     progress_cb(16, "[XML->JSON->SQL] Загружен конфиг из XML/JSON и SQL-таблицы (" + std::to_string(scanned) + " строк)");
-    sleep_cb(120);
 
     // Stage 2: Dynamically synthesize GovnoScript from the Morse/LZ77/RSA/NN/GA recovered string!
     std::ostringstream raw_script;
@@ -789,7 +786,6 @@ bool run_full_compiler_pipeline(
         "=== RAW GOVNOSCRIPT ===\r\n" + raw_script.str() +
         "\r\n=== AFTER #DEFINE (" + std::to_string(macro_cnt) + " macros) ===\r\n" + expanded;
     progress_cb(28, "[PREPROCESSOR] Раскрыто #DEFINE макросов: " + std::to_string(macro_cnt));
-    sleep_cb(120);
 
     // Stage 3: Goto Lexer
     auto tokens = lex_govnoscript(expanded);
@@ -803,7 +799,6 @@ bool run_full_compiler_pipeline(
         out_artifacts.tokens_dump = ts.str();
     }
     progress_cb(40, "[LEXER-GOTO] Нарезано токенов: " + std::to_string(tokens.size()));
-    sleep_cb(120);
 
     // Stage 4: Parser -> AST
     GovnoParser parser(tokens);
@@ -816,7 +811,6 @@ bool run_full_compiler_pipeline(
         out_artifacts.ast_node_count = cnt;
     }
     progress_cb(52, "[PARSER-AST] Построено AST (" + std::to_string(out_artifacts.ast_node_count) + " узлов)");
-    sleep_cb(120);
 
     // Stage 5: Deoptimizer + Dead-Code IR
     IRBuilder ir_builder;
@@ -834,7 +828,6 @@ bool run_full_compiler_pipeline(
         out_artifacts.ir_dump = irs.str();
     }
     progress_cb(64, "[DEOPTIMIZER-IR] Опущено в 3-адресный IR (" + std::to_string(ir.size()) + " команд)");
-    sleep_cb(120);
 
     // Stage 6: GovnoLisp -> C99 -> Brainfuck -> Peephole -> Verify
     auto [lisp_c, lisp_bytes] = compile_bytes_to_lisp_and_c(
@@ -842,7 +835,6 @@ bool run_full_compiler_pipeline(
     );
     out_artifacts.lisp_and_c_dump = lisp_c;
     progress_cb(75, "[LISP->C99] Сгенерирован Lisp и C99 код (" + std::to_string(out_artifacts.c_lines_count) + " строк)");
-    sleep_cb(120);
 
     std::string opt_bf = optimize_brainfuck_peephole(generate_brainfuck_from_bytes(lisp_bytes));
     std::string bf_check = verify_brainfuck_execution(opt_bf);
@@ -850,7 +842,6 @@ bool run_full_compiler_pipeline(
     out_artifacts.bf_length = opt_bf.size();
     out_artifacts.brainfuck_verified_output = bf_check;
     progress_cb(84, "[BRAINFUCK] Сгенерирован и проверен Brainfuck (" + std::to_string(opt_bf.size()) + " симв.)");
-    sleep_cb(120);
 
     // Stage 7: SUBLEQ One-Instruction Set Computer (OISC) compilation + execution!
     std::vector<uint8_t> verified_bytes(bf_check.begin(), bf_check.end());
@@ -858,7 +849,6 @@ bool run_full_compiler_pipeline(
     out_artifacts.subleq_oisc_dump = subleq.disassembly_dump;
     out_artifacts.subleq_cycles = subleq.cycles_executed;
     progress_cb(92, "[SUBLEQ-OISC] Прогнано через процессор с 1 инструкцией (" + std::to_string(subleq.cycles_executed) + " тактов) -> \"" + subleq.output + "\"");
-    sleep_cb(130);
 
     // Stage 8: GovnoASM -> GovnoLD Linker -> .gexe binary
     std::vector<uint8_t> final_bytes(subleq.output.begin(), subleq.output.end());
@@ -871,7 +861,6 @@ bool run_full_compiler_pipeline(
     out_artifacts.gexe_bytecode = gexe;
     out_artifacts.gexe_size_bytes = gexe.size();
     progress_cb(100, "[GOVNO-LD] Слинкован /bin/hello_world.gexe (" + std::to_string(gexe.size()) + " байт, CRC32 OK)");
-    sleep_cb(120);
 
     return true;
     LOVI_APOKALIPSIS

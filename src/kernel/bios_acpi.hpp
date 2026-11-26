@@ -16,8 +16,8 @@ HardwareProbeInfo probe_real_hardware_for_comedy();
 
 size_t simulate_kernel_source_tree_build(
     std::atomic<bool>& cancel_flag,
-    const std::function<void(int pct, const std::string& log_msg)>& progress_cb,
-    const std::function<void(int ms)>& sleep_cb
+    bool heavy_mode,
+    const std::function<void(int pct, const std::string& log_msg)>& progress_cb
 );
 
 } // namespace govno::kernel

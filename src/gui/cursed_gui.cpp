@@ -786,8 +786,8 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             SendMessageW(c.edit_log, EM_SETLIMITTEXT, 0, 0);
 
             const struct { int id; const wchar_t* title; } actions[] = {
-                {IDC_BTN_REBUILD,   L"ПЕРЕСОБРАТЬ"},
-                {IDC_BTN_TURBO,     L"ТУРБО"},
+                {IDC_BTN_REBUILD,   L"ХАРД-ПРОГОН"},
+                {IDC_BTN_TURBO,     L"ЛАЙТ-РЕЖИМ"},
                 {IDC_BTN_HOLYC_IDE, L"HOLYC IDE"},
                 {IDC_BTN_MUSIC,     L"8-BIT/МОДЕМ"},
                 {IDC_BTN_RAYTRACE,  L"РЕЙТРЕЙСИНГ"},

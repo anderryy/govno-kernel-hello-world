@@ -23,8 +23,7 @@ struct HolyCCompileRunResult {
 HolyCCompileRunResult compile_and_run_holyc_stage(
     const std::string& payload,
     std::atomic<bool>& cancel_flag,
-    const std::function<void(int pct, const std::string& log_msg)>& cb,
-    const std::function<void(int ms)>& sleep_cb
+    const std::function<void(int pct, const std::string& log_msg)>& cb
 );
 
 // Compiles and runs arbitrary HolyC code written by the user in the live GUI IDE!
