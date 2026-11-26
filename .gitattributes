@@ -3,7 +3,7 @@
 *.b93 linguist-language=Befunge
 *.prolog linguist-language=Prolog
 *.fth linguist-language=Forth
-*.lisp linguist-language="Common Lisp"
+*.lisp linguist-language=Common-Lisp
 *.cbl linguist-language=COBOL
 *.f90 linguist-language=Fortran
 *.hs linguist-language=Haskell
